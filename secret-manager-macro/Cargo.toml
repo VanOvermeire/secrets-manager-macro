@@ -1,0 +1,10 @@
+[package]
+name = "secret-manager-macro"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+secret-manager-code = { path = "../secret-manager-code" }
+
+[lib]
+proc-macro = true
