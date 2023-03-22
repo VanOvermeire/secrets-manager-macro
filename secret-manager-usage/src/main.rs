@@ -1,9 +1,14 @@
-use secret_manager_macro::SecretManager;
+use secret_manager_macro::build_secrets_struct;
 
-// TODO should go and check that a secret with this name exists
-//  should load them (later maybe do it once - but also option to refresh...)
-//  should keep the existing attributes
-#[SecretManager]
-struct SampleSecrets {}
+// TODO macro that
+//  - checks at compile time
+//  - with as little config as possible (search for creds and region etc.)
+//  - generates a struct with the secrets, based on the name
+//  - loads from AWS and offers a refresh option
+// TODO later:
+//  - param store?
+//  - lazy static?
+
+build_secrets_struct!("SampleSecrets");
 
 fn main() {}

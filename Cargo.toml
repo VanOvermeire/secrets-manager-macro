@@ -2,6 +2,5 @@
 
 members = [
     "secret-manager-macro",
-    "secret-manager-code",
     "secret-manager-usage"
 ]

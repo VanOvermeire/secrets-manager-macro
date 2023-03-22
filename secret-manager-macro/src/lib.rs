@@ -1,7 +1,9 @@
-use proc_macro::TokenStream;
-use secret_manager_code::create_secret_manager;
+mod code;
 
-#[proc_macro_attribute]
-pub fn SecretManager(_attr: TokenStream, item: TokenStream) -> TokenStream {
+use crate::code::create_secret_manager;
+use proc_macro::TokenStream;
+
+#[proc_macro]
+pub fn build_secrets_struct(item: TokenStream) -> TokenStream {
     create_secret_manager(item.into()).into()
 }
