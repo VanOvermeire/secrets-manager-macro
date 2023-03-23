@@ -1,6 +1,6 @@
-mod code;
+mod implementation;
 
-use crate::code::create_secret_manager;
+use crate::implementation::entrypoint::create_secret_manager;
 use proc_macro::TokenStream;
 
 #[proc_macro]

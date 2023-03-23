@@ -9,7 +9,7 @@ syn = { version = "1.0.98", features = ["extra-traits"]}
 proc-macro2 = "1.0.49"
 aws-config = "0.54.1"
 aws-sdk-secretsmanager = "0.24.0"
-serde_json = "1.0.93" # TODO temporary
+serde_json = "1.0.93"
 # TODO do I need full?
 tokio = { version = "1.26.0", features = ["full"] }
 serde = { version ="1.0.158", features = ["derive"]}

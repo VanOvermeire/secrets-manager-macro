@@ -996,7 +996,10 @@ dependencies = [
 name = "secret-manager-usage"
 version = "0.1.0"
 dependencies = [
+ "aws-config",
+ "aws-sdk-secretsmanager",
  "secret-manager-macro",
+ "serde_json",
 ]
 
 [[package]]
