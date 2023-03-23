@@ -1000,6 +1000,7 @@ dependencies = [
  "aws-sdk-secretsmanager",
  "secret-manager-macro",
  "serde_json",
+ "tokio",
 ]
 
 [[package]]

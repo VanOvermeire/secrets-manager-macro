@@ -1,11 +1,11 @@
 use proc_macro2::{Ident, Span, TokenStream};
 use quote::quote;
-use syn::parse::Parse;
 
 pub fn create_secret_struct(keys: &Vec<Ident>) -> TokenStream {
     let secret_fields = keys.iter().map(|k| quote!(pub #k: SecretString));
 
     quote! {
+        #[derive(Debug)]
         struct Secrets {
             #(#secret_fields,)*
         }

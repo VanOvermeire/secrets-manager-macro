@@ -4,8 +4,6 @@ use aws_sdk_secretsmanager::output::{GetSecretValueOutput, ListSecretsOutput};
 use aws_sdk_secretsmanager::types::SdkError;
 use aws_sdk_secretsmanager::Client;
 use std::collections::HashMap;
-use std::error::Error;
-use std::fmt::{Debug, Display};
 
 async fn build_client() -> Client {
     let shared_config = aws_config::from_env().load().await;
@@ -58,16 +56,20 @@ fn filter_secrets_list(
         })
 }
 
-async fn call_secret_manager(secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
+async fn call_secret_manager(
+    secret_name: &str,
+) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = build_client().await;
 
     let result = list_secrets(&client).await?;
     let actual_secret_name = filter_secrets_list(result, secret_name)?;
     let secret_value = get_secret(&client, &actual_secret_name).await?;
-    get_secret_value_as_map(secret_value)
+    get_secret_value_as_map(secret_value).map(|v| (actual_secret_name, v))
 }
 
-pub fn retrieve_keys(secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
+pub fn retrieve_real_name_and_keys(
+    secret_name: &str,
+) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(call_secret_manager(secret_name))
 }

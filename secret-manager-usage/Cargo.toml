@@ -8,3 +8,4 @@ secret-manager-macro = { path = "../secret-manager-macro" }
 aws-config = "0.54.1"
 aws-sdk-secretsmanager = "0.24.0"
 serde_json = "1.0.93"
+tokio = { version = "1.26.0", features = ["full"] }

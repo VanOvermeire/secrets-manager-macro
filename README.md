@@ -1,18 +1,18 @@
 # Secret Manager Macro
 
+## Features
+
+- Compile time checks
+- Little config required
+
 ## Usage
 
 TODO
 
+
 ## TODOs
 
-// TODO macro that
-//  - checks at compile time
-//  - with as little config as possible (search for creds and region etc.)
-//  - generates a struct with the secrets, based on the name
-//  - loads from AWS
-// TODO later:
-//  - refresh
-//  - param store?
-//  - lazy static?
-//  - secret string wrapper?
+- Avoid string allocations
+- Refresh method
+- Lazy static option?
+- Parameter store as an alternative for loading? (maybe an additional macro) -> if so maybe 'aws-secrets-macros' is a better name
