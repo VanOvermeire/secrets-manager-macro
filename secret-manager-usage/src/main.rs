@@ -1,16 +1,10 @@
-// use secret_manager_macro::build_secrets_struct;
-use secret_manager_macro::build_secrets_structz;
-
-// build_secrets_struct!(secret_name: "SampleSecrets");
+use secret_manager_macro::build_secrets_struct;
 
 // TODO compilation tests
 
 #[derive(Debug)]
-#[build_secrets_structz]
+#[build_secrets_struct]
 struct Secrets {}
-
-// #[build_secrets_structz]
-// struct OtherSecret {}
 
 #[tokio::main]
 async fn main() {

@@ -2,21 +2,10 @@ use std::collections::HashMap;
 
 use proc_macro2::{Ident, Span, TokenStream};
 use syn::{Error, ItemStruct, parse2};
-use syn::parse::Parse;
 use syn::spanned::Spanned;
 
 use crate::implementation::aws::retrieve_real_name_and_keys;
-use crate::implementation::input::{Input};
-use crate::implementation::output::{create_output, create_output_new};
-
-pub fn create_secret_manager(item: TokenStream) -> TokenStream {
-    let input: Input = parse2(item).unwrap();
-    let (actual_secret_name, key_map) = retrieve_real_name_and_keys(&input.secret_name.value()).unwrap(); // TODO no unwrap, handle errors (also for parsing)
-
-    let keys: Vec<Ident> = keys_as_ident_list(key_map);
-
-    create_output(&keys, &actual_secret_name)
-}
+use crate::implementation::output::{create_output_new};
 
 fn keys_as_ident_list(key_map: HashMap<String, String>) -> Vec<Ident> {
     key_map
