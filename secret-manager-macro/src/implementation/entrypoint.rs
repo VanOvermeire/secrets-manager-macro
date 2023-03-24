@@ -1,31 +1,44 @@
-use crate::implementation::aws::retrieve_real_name_and_keys;
-use crate::implementation::input::Input;
-use crate::implementation::output::{create_init_for_secrets, create_secret_struct};
-use crate::implementation::secret_string::create_secret_string_struct;
+use std::collections::HashMap;
+
 use proc_macro2::{Ident, Span, TokenStream};
-use quote::quote;
-use syn::parse2;
+use syn::{Error, ItemStruct, parse2};
+use syn::parse::Parse;
+use syn::spanned::Spanned;
+
+use crate::implementation::aws::retrieve_real_name_and_keys;
+use crate::implementation::input::{Input};
+use crate::implementation::output::{create_output, create_output_new};
 
 pub fn create_secret_manager(item: TokenStream) -> TokenStream {
-    eprintln!("{:?}", item);
     let input: Input = parse2(item).unwrap();
-    let (actual_secret_name, key_map) =
-        retrieve_real_name_and_keys(&input.secret_name.value()).unwrap(); // TODO no unwrap, handle errors (also for parsing)
+    let (actual_secret_name, key_map) = retrieve_real_name_and_keys(&input.secret_name.value()).unwrap(); // TODO no unwrap, handle errors (also for parsing)
 
-    let keys: Vec<Ident> = key_map
+    let keys: Vec<Ident> = keys_as_ident_list(key_map);
+
+    create_output(&keys, &actual_secret_name)
+}
+
+fn keys_as_ident_list(key_map: HashMap<String, String>) -> Vec<Ident> {
+    key_map
         .keys()
         .map(|k| Ident::new(k, Span::call_site()))
-        .collect();
+        .collect()
+}
 
-    let secret_struct = create_secret_struct(&keys);
-    let secret_string_struct = create_secret_string_struct();
-    let new = create_init_for_secrets(&keys, &actual_secret_name);
+pub fn create_secret_manager_new(_: TokenStream, item: TokenStream) -> TokenStream {
+    let input: ItemStruct = match parse2(item.clone()) {
+        Ok(it) => it,
+        Err(_) => return Error::new(
+            item.span(),
+            "Invalid input received. Expected an empty struct",
+        ).into_compile_error(),
+    };
 
-    quote! {
-        #secret_string_struct
-
-        #secret_struct
-
-        #new
+    match retrieve_real_name_and_keys(&input.ident.to_string()) {
+        Ok((actual_secret_name, key_map)) => {
+            let keys: Vec<Ident> = keys_as_ident_list(key_map);
+            create_output_new(input, &keys, &actual_secret_name)
+        }
+        Err(e) => return e.into_compile_error(input.ident.span())
     }
 }

@@ -2,7 +2,7 @@ use proc_macro2::Ident;
 use syn::parse::{Parse, ParseStream};
 use syn::{LitStr, Token};
 
-#[derive(Debug)] // TODO remove?
+// TODO remove this code
 pub struct Input {
     _secret_prefix: Ident,
     _colon: Token!(:),

@@ -1,14 +1,25 @@
+
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 
 use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::types::SdkError;
+use proc_macro2::{Span, TokenStream};
 
 #[derive(Debug)]
 pub enum RetrievalError {
     AWSError(String),
     NotFoundError(String),
     JSONError,
+}
+
+impl RetrievalError {
+    pub fn into_compile_error(self, correct_span: Span) -> TokenStream {
+        match self {
+            RetrievalError::AWSError(e) | RetrievalError::NotFoundError(e) => syn::Error::new(correct_span, e).into_compile_error(),
+            RetrievalError::JSONError => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
+        }
+    }
 }
 
 impl Display for RetrievalError {

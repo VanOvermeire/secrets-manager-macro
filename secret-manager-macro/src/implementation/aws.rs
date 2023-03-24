@@ -42,7 +42,7 @@ fn filter_secrets_list(
 ) -> Result<String, RetrievalError> {
     output
         .secret_list()
-        .ok_or_else(|| RetrievalError::NotFoundError("No secrets found".to_string()))?
+        .ok_or_else(|| RetrievalError::NotFoundError("No secrets found in AWS account".to_string()))?
         .iter()
         .filter_map(|v| v.name())
         .map(|v| v.to_string())
