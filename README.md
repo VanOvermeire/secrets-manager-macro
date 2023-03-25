@@ -2,6 +2,10 @@
 
 A macro for using AWS Secret Manager secrets in your application.
 
+## Status
+
+![Github Actions Status](https://github.com/VanOvermeire/secret-manager-macro/actions/workflows/github-deploy.yml/badge.svg)
+
 ## Features
 
 - Compile time checks
