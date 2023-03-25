@@ -31,10 +31,10 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 ## TODOs
 
 - GitHub actions improvements
+- Parameter store as an alternative for loading? As an additional macro?
+
 - Handling nextToken for list secrets
 - Search for similar names
 - Allow for different envs (look for env var?)
-- Avoid string allocations
 - Refresh method
 - Lazy static option?
-- Parameter store as an alternative for loading? As an additional macro?

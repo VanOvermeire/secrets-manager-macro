@@ -78,9 +78,9 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_se
     }
 }
 
-pub fn create_output(item: ItemStruct, keys: &[Ident], actual_secret_name: &str) -> TokenStream {
-    let name = item.ident;
-    let attributes = item.attrs;
+pub fn create_output(item: &ItemStruct, keys: &[Ident], actual_secret_name: &str) -> TokenStream {
+    let name = &item.ident;
+    let attributes = &item.attrs;
 
     let secret_string_name = get_secret_string_name(&name);
     let secret_string_struct = create_secret_string_struct(&secret_string_name);

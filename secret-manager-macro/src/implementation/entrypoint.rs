@@ -26,7 +26,7 @@ pub fn create_secret_manager(_: TokenStream, item: TokenStream) -> TokenStream {
     match retrieve_real_name_and_keys(&input.ident.to_string()) {
         Ok((actual_secret_name, key_map)) => {
             let keys: Vec<Ident> = keys_as_ident_list(key_map);
-            create_output(input, &keys, &actual_secret_name)
+            create_output(&input, &keys, &actual_secret_name)
         }
         Err(e) => e.into_compile_error(input.ident.span())
     }
@@ -44,8 +44,10 @@ mod tests {
 
         let actual = keys_as_ident_list(keys);
 
+        let as_strings: Vec<String> = actual.iter().map(|v| v.to_string()).collect();
+
         assert_eq!(actual.len(), 2);
-        assert_eq!(actual[0].to_string(), "firstKey".to_string());
-        assert_eq!(actual[1].to_string(), "secondKey".to_string());
+        assert!(as_strings.contains(&"firstKey".to_string()));
+        assert!(as_strings.contains(&"secondKey".to_string()));
     }
 }
