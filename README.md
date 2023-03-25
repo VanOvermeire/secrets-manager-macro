@@ -44,14 +44,15 @@ async fn main() {
 
 ## Running the tests
 
-The integration tests require that you have valid AWS credentials and an AWS Secret Manager secret called 'Secrets' in your AWS account.
+The integration tests require that you have valid AWS credentials and an AWS Secret Manager secret called 'GithubActionsTestSecret' in your AWS account.
+You can use `scripts/secret_manager_tests_setup.sh` to create this secret with the correct secret value.
+
 At the time of writing, a secret will cost you 40 dollar cents per month, plus 5 cents for 10 000 API calls.
 
 ## TODOs
 
-- Add script for setup of env (creation of secrets)
-- Expand the documentation
-- GitHub actions improvements
+- Expand documentation
+- GitHub actions publish + end-to-end test with deploy lambda and check output
 - Parameter store as an alternative for loading? As an additional macro?
 - Test for JSON error
 

@@ -12,9 +12,6 @@ env:
   AWS_DEFAULT_REGION: eu-west-1
 #  AWS_REGION: eu-west-1
 
-# TODO end to end test - deploy lambda and check output
-# TODO publish (see below)
-
 jobs:
   clippy:
     runs-on: ubuntu-latest
