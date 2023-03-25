@@ -1,26 +1,26 @@
 use proc_macro2::{Ident, TokenStream};
-use quote::quote;
+use quote::{format_ident, quote};
 use syn::ItemStruct;
 
-// there are libraries for this, but this way no additional import is needed (there are enough already)
-fn create_secret_string_struct() -> TokenStream {
+// there are libraries for secret strings, but this way no additional import is needed (there are enough already)
+fn create_secret_string_struct(secret_string_name: &Ident) -> TokenStream {
     quote! {
         #[derive(Clone,PartialEq)]
-        pub struct SecretString(String);
+        pub struct #secret_string_name(String);
 
-        impl SecretString {
+        impl #secret_string_name {
             pub fn new(input: String) -> Self {
-                SecretString(input)
+                #secret_string_name(input)
             }
         }
 
-        impl std::fmt::Debug for SecretString {
+        impl std::fmt::Debug for #secret_string_name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_str(&format!("{}****", self.0.chars().next().unwrap_or('*')))
             }
         }
 
-        impl AsRef<str> for SecretString {
+        impl AsRef<str> for #secret_string_name {
             fn as_ref(&self) -> &str {
                 &self.0
             }
@@ -28,10 +28,16 @@ fn create_secret_string_struct() -> TokenStream {
     }
 }
 
-fn create_init_for_secrets_new(keys: &Vec<Ident>, secret_struct_name: &Ident, actual_secret_name: &str) -> TokenStream {
+fn get_secret_string_name(secret_struct_name: &Ident) -> Ident {
+    format_ident!("{}SecretString", secret_struct_name.to_string())
+}
+
+fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_secret_name: &str) -> TokenStream {
+    let secret_string_name = get_secret_string_name(secret_struct_name);
+
     let init_of_struct = keys.iter().map(|k| {
         quote! {
-            #k: SecretString::new(map.get(stringify!(#k)).unwrap().to_string())
+            #k: #secret_string_name::new(map.get(stringify!(#k)).unwrap().to_string())
         }
     });
 
@@ -72,13 +78,14 @@ fn create_init_for_secrets_new(keys: &Vec<Ident>, secret_struct_name: &Ident, ac
     }
 }
 
-pub fn create_output_new(item: ItemStruct, keys: &Vec<Ident>, actual_secret_name: &str) -> TokenStream {
+pub fn create_output(item: ItemStruct, keys: &[Ident], actual_secret_name: &str) -> TokenStream {
     let name = item.ident;
     let attributes = item.attrs;
 
-    let secret_string_struct = create_secret_string_struct();
-    let secret_fields = keys.iter().map(|k| quote!(pub #k: SecretString));
-    let new = create_init_for_secrets_new(keys, &name, actual_secret_name);
+    let secret_string_name = get_secret_string_name(&name);
+    let secret_string_struct = create_secret_string_struct(&secret_string_name);
+    let secret_fields = keys.iter().map(|k| quote!(pub #k: #secret_string_name));
+    let new = create_init_for_secrets(keys, &name, actual_secret_name);
 
     quote!(
         #secret_string_struct
@@ -90,4 +97,20 @@ pub fn create_output_new(item: ItemStruct, keys: &Vec<Ident>, actual_secret_name
 
         #new
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use proc_macro2::Span;
+    use proc_macro2::Ident;
+    use super::*;
+
+    #[test]
+    fn should_generate_ident_with_secret_string_suffix() {
+        let example_ident = Ident::new("Example", Span::call_site());
+
+        let actual = get_secret_string_name(&example_ident);
+
+        assert_eq!(actual.to_string(), "ExampleSecretString".to_string());
+    }
 }

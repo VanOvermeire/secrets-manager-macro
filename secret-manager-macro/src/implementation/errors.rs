@@ -8,16 +8,16 @@ use proc_macro2::{Span, TokenStream};
 
 #[derive(Debug)]
 pub enum RetrievalError {
-    AWSError(String),
-    NotFoundError(String),
-    JSONError,
+    Aws(String),
+    NotFound(String),
+    Json,
 }
 
 impl RetrievalError {
     pub fn into_compile_error(self, correct_span: Span) -> TokenStream {
         match self {
-            RetrievalError::AWSError(e) | RetrievalError::NotFoundError(e) => syn::Error::new(correct_span, e).into_compile_error(),
-            RetrievalError::JSONError => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
+            RetrievalError::Aws(e) | RetrievalError::NotFound(e) => syn::Error::new(correct_span, e).into_compile_error(),
+            RetrievalError::Json => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
         }
     }
 }
@@ -30,19 +30,19 @@ impl Display for RetrievalError {
 
 impl From<serde_json::Error> for RetrievalError {
     fn from(_: serde_json::Error) -> Self {
-        RetrievalError::JSONError
+        RetrievalError::Json
     }
 }
 
 impl From<SdkError<ListSecretsError>> for RetrievalError {
     fn from(value: SdkError<ListSecretsError>) -> Self {
-        RetrievalError::AWSError(value.to_string())
+        RetrievalError::Aws(value.to_string())
     }
 }
 
 impl From<SdkError<GetSecretValueError>> for RetrievalError {
     fn from(value: SdkError<GetSecretValueError>) -> Self {
-        RetrievalError::AWSError(value.to_string())
+        RetrievalError::Aws(value.to_string())
     }
 }
 

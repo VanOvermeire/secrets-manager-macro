@@ -1,0 +1,49 @@
+name: Secret Manager Macro
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+env:
+  PROJECT_NAME: secret_manager_macro
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  AWS_DEFAULT_REGION: ${{ env.AWS_REGION }}
+  AWS_REGION: eu-west-1
+
+# TODO end to end test - deploy lambda and check output
+# TODO publish (see below)
+
+jobs:
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Run clippy with additional denies
+        run: cargo clippy -- -D clippy::style -D clippy::suspicious
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Run all tests
+        run: cargo test
+
+#  publish:
+#    needs:
+#      - test
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Check out repository code
+#        uses: actions/checkout@v3
+#      - name: Login to Cargo
+#        uses: actions-rs/cargo@v1
+#        with:
+#          command: login
+#          args: ${{ secrets.CRATES_TOKEN }}
+#      - name: Publish to Cargo
+#        run: cargo publish
+#        working-directory: secret-manager-macro # only interested in the subdir (with our macro)

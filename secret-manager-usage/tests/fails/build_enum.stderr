@@ -1,0 +1,5 @@
+error: Invalid input received. Expected an empty struct
+ --> tests/fails/build_enum.rs:4:1
+  |
+4 | pub enum DoesNotWorkForEnum {}
+  | ^^^
