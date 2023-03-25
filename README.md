@@ -9,18 +9,33 @@ A macro for using AWS Secret Manager secrets in your application.
 
 ## Usage
 
-TODO!
-
-Dependencies:
+In addition to this crate, you will need the following dependencies:
 
 ```toml
-
+[dependencies]
+aws-config = "0.54.1"
+aws-sdk-secretsmanager = "0.24.0"
+serde_json = "1.0.93"
+tokio = { version = "1.26.0", features = ["full"] }
 ```
 
-Example code:
+And if you are running inside an AWS Lambda, you should already have most of these.
+
+Example code. This assumes you have a secret called 'Secrets' in your AWS environment. 
+It will throw an error if this is not the case, or if you have no valid credentials.
 
 ```rust
+#[tokio::main]
+async fn main() {
+    #[derive(Debug)]
+    #[build_secrets_struct]
+    struct Secrets {}
 
+    let secrets = Secrets::new().await;
+
+    // secrets are properties of the struct, so you can now access them
+    assert_eq!(secrets.firstKey.as_ref(), "firstValue");
+}
 ```
 
 ## Running the tests
@@ -31,7 +46,7 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 ## TODOs
 
 - Add script for setup of env (creation of secrets)
-
+- Expand the documentation
 - GitHub actions improvements
 - Parameter store as an alternative for loading? As an additional macro?
 - Test for JSON error
@@ -41,3 +56,5 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 - Allow for different envs (look for env var?)
 - Refresh method
 - Lazy static option?
+- Allow selection of secrets by adding fields to the struct
+- Allow disabling of compile time checks (more useful once you can add fields to the struct...)? Or 'saving' of a check?
