@@ -30,8 +30,11 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 
 ## TODOs
 
+- Add script for setup of env (creation of secrets)
+
 - GitHub actions improvements
 - Parameter store as an alternative for loading? As an additional macro?
+- Test for JSON error
 
 - Handling nextToken for list secrets
 - Search for similar names
