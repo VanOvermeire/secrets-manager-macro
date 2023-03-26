@@ -25,8 +25,7 @@ tokio = { version = "1.26.0", features = ["full"] }
 
 And if you are running inside an AWS Lambda, you should already have most of these.
 
-Example code. This assumes you have a secret called 'Secrets' in your AWS environment. 
-It will throw an error if this is not the case, or if you have no valid credentials.
+Example code:
 
 ```rust
 #[tokio::main]
@@ -42,6 +41,12 @@ async fn main() {
 }
 ```
 
+The macro will look for any 
+
+
+This assumes you have a secret called Secrets in your AWS environment.  
+It will throw an error if this is not the case, or if you have no valid credentials.
+
 ## Running the tests
 
 The integration tests require that you have valid AWS credentials and an AWS Secret Manager secret called 'GithubActionsTestSecret' in your AWS account.
@@ -56,6 +61,7 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 - Parameter store as an alternative for loading? As an additional macro?
 - Test for JSON error
 
+- Attribute for changing secret name
 - Handling nextToken for list secrets
 - Search for similar names
 - Allow for different envs (look for env var?)

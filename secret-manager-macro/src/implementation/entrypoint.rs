@@ -1,18 +1,10 @@
-use std::collections::HashMap;
-
-use proc_macro2::{Ident, Span, TokenStream};
+use proc_macro2::{Ident, TokenStream};
 use syn::{Error, ItemStruct, parse2};
 use syn::spanned::Spanned;
 
 use crate::implementation::aws::retrieve_real_name_and_keys;
-use crate::implementation::output::{create_output};
-
-fn keys_as_ident_list(key_map: HashMap<String, String>) -> Vec<Ident> {
-    key_map
-        .keys()
-        .map(|k| Ident::new(k, Span::call_site()))
-        .collect()
-}
+use crate::implementation::output::create_output;
+use crate::implementation::transformations::{keys_as_ident_list, possible_base_names};
 
 pub fn create_secret_manager(_: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemStruct = match parse2(item.clone()) {
@@ -23,31 +15,14 @@ pub fn create_secret_manager(_: TokenStream, item: TokenStream) -> TokenStream {
         ).into_compile_error(),
     };
 
-    match retrieve_real_name_and_keys(&input.ident.to_string()) {
+    let secret_struct_name = input.ident.to_string();
+    let possible_names = possible_base_names(&secret_struct_name);
+
+    match retrieve_real_name_and_keys(possible_names) {
         Ok((actual_secret_name, key_map)) => {
             let keys: Vec<Ident> = keys_as_ident_list(key_map);
-            create_output(&input, &keys, &actual_secret_name)
+            create_output(&input, &keys, &actual_secret_name) // a lot of parameters, maybe create helper struct
         }
         Err(e) => e.into_compile_error(input.ident.span())
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn should_create_idents_from_keys_and_ignore_values() {
-        let mut keys = HashMap::new();
-        keys.insert("firstKey".to_string(), "firstValue".to_string());
-        keys.insert("secondKey".to_string(), "secondValue".to_string());
-
-        let actual = keys_as_ident_list(keys);
-
-        let as_strings: Vec<String> = actual.iter().map(|v| v.to_string()).collect();
-
-        assert_eq!(actual.len(), 2);
-        assert!(as_strings.contains(&"firstKey".to_string()));
-        assert!(as_strings.contains(&"secondKey".to_string()));
     }
 }

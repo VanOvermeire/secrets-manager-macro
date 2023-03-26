@@ -29,35 +29,40 @@ fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<Strin
     Ok(serde_json::from_str(&content)?)
 }
 
-// not really needed yet but we will offer multiple options later
-fn filter_secrets_list(output: ListSecretsOutput, secret_name: &str) -> Result<String, RetrievalError> {
+// if there are multiple options, which one do we want? dev? prod?
+// for now naive: pick the first one
+fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>) -> Result<String, RetrievalError> {
     output
         .secret_list()
         .ok_or_else(|| RetrievalError::NotFound("No secrets found in AWS account".to_string()))?
         .iter()
         .filter_map(|v| v.name())
         .map(|v| v.to_string())
-        .find(|v| v.eq(&secret_name))
+        .find(|v| {
+            // exact match *or* at least with a forward slash in front
+            base_secret_names.contains(v) ||
+            base_secret_names.iter().any(|name| v.contains(&format!("/{}", name)))
+        })
         .ok_or_else(|| {
             RetrievalError::NotFound(format!(
-                "Could not find secret with name {}",
-                secret_name
+                "Could not find secret with any of these names: {}",
+                base_secret_names.join(",")
             ))
         })
 }
 
-async fn call_secret_manager(secret_name: &str) -> Result<(String, HashMap<String, String>), RetrievalError> {
+async fn call_secret_manager(base_secret_names: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = build_client().await;
 
-    let result = list_secrets(&client).await?;
-    let actual_secret_name = filter_secrets_list(result, secret_name)?;
-    let secret_value = get_secret(&client, &actual_secret_name).await?;
-    get_secret_value_as_map(secret_value).map(|v| (actual_secret_name, v))
+    let list_result = list_secrets(&client).await?;
+    let full_secret_name = filter_secrets_list(list_result, base_secret_names)?;
+    let secret_value = get_secret(&client, &full_secret_name).await?;
+    get_secret_value_as_map(secret_value).map(|v| (full_secret_name, v))
 }
 
-pub fn retrieve_real_name_and_keys(secret_name: &str) -> Result<(String, HashMap<String, String>), RetrievalError> {
+pub fn retrieve_real_name_and_keys(base_secret_names: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(call_secret_manager(secret_name))
+    rt.block_on(call_secret_manager(base_secret_names))
 }
 
 #[cfg(test)]
@@ -69,17 +74,40 @@ mod tests {
     #[test]
     fn filter_secrets_list_should_find_secret_with_given_name() {
         let list = create_secret_list();
+        let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
 
-        let actual = filter_secrets_list(list, "Secret").unwrap();
+        let actual = filter_secrets_list(list, possible_names).unwrap();
 
-        assert_eq!(actual, "Secret");
+        assert_eq!(actual, "/prod/sample-secret");
+    }
+
+    #[test]
+    fn filter_secrets_list_should_find_secret_ignoring_secret_that_looks_similar() {
+        let list = ListSecretsOutput::builder()
+            .secret_list(SecretListEntry::builder().name("AnotherKindOfSampleSecret").build())
+            .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
+            .build();
+        let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
+
+        let actual = filter_secrets_list(list, possible_names).unwrap();
+
+        assert_eq!(actual, "/prod/sample-secret");
     }
 
     #[test]
     fn filter_secrets_list_should_return_error_for_unknown_secret() {
         let list = create_secret_list();
 
-        let actual = filter_secrets_list(list, "Unknown");
+        let actual = filter_secrets_list(list, vec!["Unknown".to_string()]);
+
+        assert!(actual.is_err());
+    }
+
+    #[test]
+    fn filter_secrets_list_should_return_error_when_there_are_no_secrets() {
+        let list = ListSecretsOutput::builder().build();
+
+        let actual = filter_secrets_list(list, vec!["DoesNotMatter".to_string()]);
 
         assert!(actual.is_err());
     }
@@ -123,8 +151,9 @@ mod tests {
 
     fn create_secret_list() -> ListSecretsOutput {
         let list = ListSecretsOutput::builder()
-            .secret_list(SecretListEntry::builder().name("Secret").build())
-            .secret_list(SecretListEntry::builder().name("NotSecret").build())
+            .secret_list(SecretListEntry::builder().name("/dev/fake-secret").build())
+            .secret_list(SecretListEntry::builder().name("FakeSecret").build())
+            .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
             .build();
         list
     }

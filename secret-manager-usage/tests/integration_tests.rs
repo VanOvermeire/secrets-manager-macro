@@ -4,9 +4,9 @@ use secret_manager_macro::build_secrets_struct;
 async fn should_retrieve_secrets() {
     #[derive(Debug)]
     #[build_secrets_struct]
-    struct GithubActionsTestSecret {}
+    struct SecretManagerTestSecret {}
 
-    let secrets = GithubActionsTestSecret::new().await;
+    let secrets = SecretManagerTestSecret::new().await;
 
     assert_eq!(secrets.firstKey.as_ref(), "firstValue");
     assert_eq!(secrets.secondKey.as_ref(), "secondValue");
