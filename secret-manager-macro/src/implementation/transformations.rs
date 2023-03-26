@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 use proc_macro2::{Ident, Span};
-use crate::implementation::errors::RetrievalError;
-use crate::implementation::errors::RetrievalError::MissingEnv;
 
 const HYPHEN: char = '-';
 const UNDERSCORE: char = '_';

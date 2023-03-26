@@ -58,7 +58,7 @@ fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>
 }
 
 // would be nice to also support suffix (secret-something/dev)? but would also need to *know* where this is for generating the right 'get' call in output
-fn get_full_and_base_secret(found_secret_names: &Vec<String>, envs: &Vec<String>) -> (String, String) {
+fn get_full_and_base_secret(found_secret_names: &[String], envs: &[String]) -> (String, String) {
     if envs.is_empty() {
         let full = found_secret_names.iter()
             .find(|s| s.contains("/dev/"))
@@ -101,7 +101,7 @@ async fn call_secret_manager(base_secret_names: Vec<String>, envs: &Vec<String>)
     let list_result = list_secrets(&client).await?;
     let found_secret_names = filter_secrets_list(list_result, base_secret_names)?;
     let matched_secrets = validate_secrets(found_secret_names, envs)?;
-    let (full_secret_name, actual_base_name) = get_full_and_base_secret(&matched_secrets, &envs);
+    let (full_secret_name, actual_base_name) = get_full_and_base_secret(&matched_secrets, envs);
 
     let secret_value = get_secret(&client, &full_secret_name).await?;
     get_secret_value_as_map(secret_value).map(|v| (actual_base_name, v))
