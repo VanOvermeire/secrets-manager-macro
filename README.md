@@ -62,6 +62,8 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 - Test for JSON error
 
 - Attribute for changing secret name
+- Attribute for envs
+- Allow for checking of selection of envs
 - Handling nextToken for list secrets
 - Search for similar names
 - Allow for different envs (look for env var?)

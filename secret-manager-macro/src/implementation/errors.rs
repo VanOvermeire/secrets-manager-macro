@@ -10,6 +10,7 @@ use proc_macro2::{Span, TokenStream};
 pub enum RetrievalError {
     Aws(String),
     NotFound(String),
+    MissingEnv(String),
     Json,
 }
 
@@ -18,6 +19,7 @@ impl RetrievalError {
         match self {
             RetrievalError::Aws(e) | RetrievalError::NotFound(e) => syn::Error::new(correct_span, e).into_compile_error(),
             RetrievalError::Json => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
+            RetrievalError::MissingEnv(e) => syn::Error::new(correct_span, e).into_compile_error(),
         }
     }
 }

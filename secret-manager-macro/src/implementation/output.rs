@@ -32,7 +32,7 @@ fn get_secret_string_name(secret_struct_name: &Ident) -> Ident {
     format_ident!("{}SecretString", secret_struct_name.to_string())
 }
 
-fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_secret_name: &str) -> TokenStream {
+fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_base_secret_name: &str) -> TokenStream {
     let secret_string_name = get_secret_string_name(secret_struct_name);
 
     let init_of_struct = keys.iter().map(|k| {
@@ -40,6 +40,9 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_se
             #k: #secret_string_name::new(map.get(stringify!(#k)).unwrap().to_string())
         }
     });
+
+    // let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
+    // let secret_name = format!("/{}/{}", env, #actual_base_secret_name);
 
     quote! {
         async fn get_secret(
@@ -67,7 +70,11 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_se
             pub async fn new() -> Self {
                 let shared_config = aws_config::from_env().load().await;
                 let client = aws_sdk_secretsmanager::Client::new(&shared_config);
-                let secret_value = get_secret(&client, #actual_secret_name).await;
+
+                let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
+                let secret_name = format!("/{}/{}", env, #actual_base_secret_name);
+
+                let secret_value = get_secret(&client, &secret_name).await;
                 let map = get_secret_as_map(secret_value);
 
                 #secret_struct_name {
@@ -78,14 +85,14 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_se
     }
 }
 
-pub fn create_output(item: &ItemStruct, keys: &[Ident], actual_secret_name: &str) -> TokenStream {
+pub fn create_output(item: &ItemStruct, keys: &[Ident], actual_base_secret_name: &str) -> TokenStream {
     let name = &item.ident;
     let attributes = &item.attrs;
 
     let secret_string_name = get_secret_string_name(name);
     let secret_string_struct = create_secret_string_struct(&secret_string_name);
     let secret_fields = keys.iter().map(|k| quote!(pub #k: #secret_string_name));
-    let new = create_init_for_secrets(keys, name, actual_secret_name);
+    let new = create_init_for_secrets(keys, name, actual_base_secret_name);
 
     quote!(
         #secret_string_struct
