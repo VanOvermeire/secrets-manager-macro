@@ -76,6 +76,7 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 - Expand documentation
 - GitHub actions publish + end-to-end test with deploy lambda and check output
 
+- Accept ENVIRONMENT as an alternative to ENV (any other vars?)
 - Only allow the passed in `envs` when calling `new`?
 - Check all env contents
 - Attribute for changing secret name

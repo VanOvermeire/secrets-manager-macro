@@ -1,13 +1,19 @@
+use std::collections::HashMap;
 use proc_macro2::{Ident, TokenStream};
 use syn::{Error, ItemStruct, parse2};
 use syn::spanned::Spanned;
 
-use crate::implementation::aws::retrieve_real_name_and_keys;
+use crate::implementation::aws::{call_secret_manager};
+use crate::implementation::errors::RetrievalError;
 use crate::implementation::input::get_environments;
 use crate::implementation::output::create_output;
 use crate::implementation::transformations::{keys_as_ident_list, possible_base_names};
 
-// TODO maybe this can just be moved to mod
+fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.block_on(call_secret_manager(base_secret_names, envs))
+}
+
 pub fn create_secret_manager(attributes: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemStruct = match parse2(item.clone()) {
         Ok(it) => it,

@@ -20,7 +20,7 @@ impl Parse for Attributes {
     }
 }
 
-// TODO return wrapper instead
+// return wrapper instead for some more safety?
 pub fn get_environments(attributes: TokenStream) -> Vec<String> {
     let possible_attributes: Result<Attributes, syn::Error> = parse2(attributes);
 
@@ -37,7 +37,6 @@ mod tests {
     use syn::token::{Eq};
     use quote::ToTokens;
 
-    // not exactly the same as the input stream, but very close
     #[test]
     fn get_environments_should_return_all_present_envs() {
         let mut stream = TokenStream::new();

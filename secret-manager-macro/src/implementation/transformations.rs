@@ -13,25 +13,24 @@ pub struct ValidatedSecrets {
 }
 
 impl ValidatedSecrets {
-    // TODO match with guard?
     pub fn new(found_secret_names: Vec<String>, envs: Vec<String>) -> Result<Self, RetrievalError> {
-        if found_secret_names.is_empty() {
-            Err(RetrievalError::NotFound("Did not find any secrets".to_string())) // should not occur in current setup though
-        } else if envs.is_empty() {
-            Ok(ValidatedSecrets {
-                secrets: found_secret_names,
+        match (found_secret_names, envs) {
+            (secrets, _) if secrets.is_empty() => Err(RetrievalError::NotFound("Did not find any secrets".to_string())), // should not occur in current setup though
+            (secrets, envs) if envs.is_empty() => Ok(ValidatedSecrets {
+                secrets,
                 envs,
-            })
-        } else {
-            let matched: Vec<String> = found_secret_names.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
+            }),
+            (secrets, envs) => {
+                let matched: Vec<String> = secrets.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
 
-            if matched.len() == envs.len() {
-                Ok(ValidatedSecrets {
-                    secrets: matched,
-                    envs,
-                })
-            } else {
-                Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
+                if matched.len() == envs.len() {
+                    Ok(ValidatedSecrets {
+                        secrets: matched,
+                        envs,
+                    })
+                } else {
+                    Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
+                }
             }
         }
     }

@@ -3,10 +3,46 @@ use std::collections::HashMap;
 use aws_sdk_secretsmanager::output::{GetSecretValueOutput, ListSecretsOutput};
 
 use crate::implementation::errors::RetrievalError;
-use crate::implementation::sm_client::SecretManagerClient;
 use crate::implementation::transformations::ValidatedSecrets;
+use aws_sdk_secretsmanager::Client;
+use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
+use aws_sdk_secretsmanager::types::SdkError;
 
-// maybe all this become helpers for the sm client file
+struct SecretManagerClient {
+    client: Client
+}
+
+impl SecretManagerClient {
+    async fn new() -> Self {
+        let shared_config = aws_config::from_env().load().await;
+        SecretManagerClient {
+            client: Client::new(&shared_config),
+        }
+    }
+
+    async fn list_secrets(&self) -> Result<ListSecretsOutput, SdkError<ListSecretsError>> {
+        self.client.list_secrets().send().await
+    }
+
+    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
+        let list_result = self.list_secrets().await?;
+        Ok(filter_secrets_list(list_result, base_secret_names)?)
+    }
+
+    async fn get_secret(&self, secret_name: &str) -> Result<GetSecretValueOutput, SdkError<GetSecretValueError>> {
+        self.client
+            .get_secret_value()
+            .secret_id(secret_name)
+            .send()
+            .await
+    }
+
+    async fn get_secret_as_map(&self, full_secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
+        let secret_value = self.get_secret(&full_secret_name).await?;
+        get_secret_value_as_map(secret_value)
+    }
+}
+
 fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<String, String>, RetrievalError> {
     let content = output
         .secret_string()
@@ -39,21 +75,15 @@ fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>
     }
 }
 
-async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
+pub async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
-    let list_result = client.list_secrets().await?;
-    let found_secret_names = filter_secrets_list(list_result, base_secret_names)?;
+    let found_secret_names = client.get_filtered_secret_list(base_secret_names).await?;
 
     let validated_secrets = ValidatedSecrets::new(found_secret_names, envs)?;
     let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
 
-    let secret_value = client.get_secret(&full_secret_name).await?;
-    get_secret_value_as_map(secret_value).map(|v| (actual_base_name, v))
-}
-
-pub fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
-    let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(call_secret_manager(base_secret_names, envs))
+    let secret_value = client.get_secret_as_map(&full_secret_name).await?;
+    Ok((actual_base_name, secret_value))
 }
 
 #[cfg(test)]
