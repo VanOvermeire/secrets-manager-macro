@@ -26,7 +26,7 @@ impl SecretManagerClient {
 
     async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
         let list_result = self.list_secrets().await?;
-        Ok(filter_secrets_list(list_result, base_secret_names)?)
+        filter_secrets_list(list_result, base_secret_names)
     }
 
     async fn get_secret(&self, secret_name: &str) -> Result<GetSecretValueOutput, SdkError<GetSecretValueError>> {
@@ -38,7 +38,7 @@ impl SecretManagerClient {
     }
 
     async fn get_secret_as_map(&self, full_secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
-        let secret_value = self.get_secret(&full_secret_name).await?;
+        let secret_value = self.get_secret(full_secret_name).await?;
         get_secret_value_as_map(secret_value)
     }
 }
