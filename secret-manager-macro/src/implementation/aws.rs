@@ -8,6 +8,7 @@ use aws_sdk_secretsmanager::types::SdkError;
 use crate::implementation::errors::RetrievalError;
 use crate::implementation::errors::RetrievalError::MissingEnv;
 
+// TODO client struct + separate file
 async fn build_client() -> Client {
     let shared_config = aws_config::from_env().load().await;
     Client::new(&shared_config)
@@ -73,7 +74,7 @@ fn get_full_and_base_secret(found_secret_names: &[String], envs: &[String]) -> (
             .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
             .to_string();
         let base = envs.iter().fold(full.clone(), |acc, curr| {
-            acc.replace(&format!("/{}/", curr), "")
+            acc.replace(&format!("/{curr}/"), "")
         });
 
         (full, base)
@@ -90,7 +91,7 @@ fn validate_secrets(found_secret_names: Vec<String>, envs: &Vec<String>) -> Resu
         if matched.len() == envs.len() {
             Ok(matched)
         } else {
-            Err(MissingEnv(format!("Received these envs {} but only matched these secrets {}", matched.join(","), envs.join(","))))
+            Err(MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
         }
     }
 }

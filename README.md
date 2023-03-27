@@ -50,7 +50,7 @@ It will throw an error if this is not the case, or if you have no valid credenti
 ## Running the tests
 
 The integration tests require that you have valid AWS credentials and an AWS Secret Manager secret called 'GithubActionsTestSecret' in your AWS account.
-You can use `scripts/secret_manager_tests_setup.sh` to create this secret with the correct secret value.
+You can use `secret_manager_tests_setup.sh` in `scripts` to create this secret with the correct secret value.
 
 At the time of writing, a secret will cost you 40 dollar cents per month, plus 5 cents for 10 000 API calls.
 

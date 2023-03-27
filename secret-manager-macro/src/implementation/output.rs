@@ -54,7 +54,7 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
                 .secret_id(secret_name)
                 .send()
                 .await
-                .unwrap()
+                .expect(&format!("Expected to find secret with name {}. Instead got error", secret_name))
         }
 
         fn get_secret_as_map(

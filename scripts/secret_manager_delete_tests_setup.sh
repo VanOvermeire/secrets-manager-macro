@@ -1,8 +1,16 @@
 #!/bin/bash
 
-# WARNING: will force-delete the given secret #
+# WARNING: This will *force-delete* the given secret
 
-source constants.sh
+if ! source constants.sh; then
+  exit 1
+fi
 
-echo "Force-deleting secret with name $SECRET_NAME"
-aws secretsmanager delete-secret --secret-id --force-delete-without-recovery "$SECRET_NAME"
+function force_delete_secret() {
+  echo "Force-deleting secret with name $1"
+  aws secretsmanager delete-secret --force-delete-without-recovery --secret-id "$1" 2>&1 > /dev/null
+}
+
+force_delete_secret "$SECRET_NAME_WITH_PREFIX_DEV"
+force_delete_secret "$SECRET_NAME_WITH_PREFIX_PROD"
+force_delete_secret "$SECRET_NAME_WITHOUT_PREFIX"

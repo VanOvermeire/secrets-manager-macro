@@ -35,6 +35,7 @@ mod tests {
     use proc_macro2::Span;
     use super::*;
     use syn::token::{Eq};
+    use quote::ToTokens;
 
     // not exactly the same as the input stream, but very close
     #[test]
