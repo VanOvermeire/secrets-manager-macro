@@ -6,7 +6,7 @@ use crate::implementation::errors::RetrievalError;
 use crate::implementation::sm_client::SecretManagerClient;
 use crate::implementation::transformations::ValidatedSecrets;
 
-// TODO maybe these become helpers for the sm client file
+// maybe all this become helpers for the sm client file
 fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<String, String>, RetrievalError> {
     let content = output
         .secret_string()
@@ -39,44 +39,6 @@ fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>
     }
 }
 
-// would be nice to also support suffix (secret-something/dev)? but would also need to *know* where this is for generating the right 'get' call in output
-// fn get_full_and_base_secret(found_secret_names: &[String], envs: &[String]) -> (String, String) {
-//     if envs.is_empty() {
-//         let full = found_secret_names.iter()
-//             .find(|s| s.contains("/dev/"))
-//             .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
-//             .to_string();
-//         let base = full.replace("/dev/", "");
-//
-//         (full, base)
-//     } else {
-//         let full = found_secret_names.iter()
-//             .find(|s| s.contains("/dev/"))
-//             .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
-//             .to_string();
-//         let base = envs.iter().fold(full.clone(), |acc, curr| {
-//             acc.replace(&format!("/{curr}/"), "")
-//         });
-//
-//         (full, base)
-//     }
-// }
-//
-// // TODO return ValidatedSecrets - and use that in the next methods - and move to separate package
-// fn validate_secrets(found_secret_names: Vec<String>, envs: &Vec<String>) -> Result<Vec<String>, RetrievalError> {
-//     if envs.is_empty() {
-//         Ok(found_secret_names)
-//     } else {
-//         let matched: Vec<String> = found_secret_names.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
-//
-//         if matched.len() == envs.len() {
-//             Ok(matched)
-//         } else {
-//             Err(MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
-//         }
-//     }
-// }
-
 async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
     let list_result = client.list_secrets().await?;
@@ -84,9 +46,6 @@ async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) 
 
     let validated_secrets = ValidatedSecrets::new(found_secret_names, envs)?;
     let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
-
-    // let matched_secrets = validate_secrets(found_secret_names, envs)?;
-    // let (full_secret_name, actual_base_name) = get_full_and_base_secret(&matched_secrets, envs);
 
     let secret_value = client.get_secret(&full_secret_name).await?;
     get_secret_value_as_map(secret_value).map(|v| (actual_base_name, v))

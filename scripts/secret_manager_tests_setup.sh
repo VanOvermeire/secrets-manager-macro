@@ -14,3 +14,4 @@ function create_secret_if_not_exist() {
 create_secret_if_not_exist "${SECRET_NAME_WITH_PREFIX_DEV}" "${SECRET_VALUE_FOR_PREFIX_DEV}"
 create_secret_if_not_exist "${SECRET_NAME_WITH_PREFIX_PROD}" "${SECRET_VALUE_FOR_PREFIX_PROD}"
 create_secret_if_not_exist "${SECRET_NAME_WITHOUT_PREFIX}" "${SECRET_VALUE_FOR_NO_PREFIX}"
+create_secret_if_not_exist "${INVALID_JSON_SECRET}" "${INVALID_JSON_VALUE}"

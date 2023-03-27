@@ -8,3 +8,6 @@ SECRET_VALUE_FOR_PREFIX_PROD='{ "firstKey": "prodValue", "secondKey": "secondPro
 
 SECRET_NAME_WITHOUT_PREFIX="NoPrefixSecret"
 SECRET_VALUE_FOR_NO_PREFIX='{ "thirdKey": "thirdValue" }'
+
+INVALID_JSON_SECRET="InvalidSecret"
+INVALID_JSON_VALUE='"firstKey": "prodValue"'

@@ -37,12 +37,9 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
 
     let init_of_struct = keys.iter().map(|k| {
         quote! {
-            #k: #secret_string_name::new(map.get(stringify!(#k)).unwrap().to_string())
+            #k: #secret_string_name::new(map.get(stringify!(#k)).expect(&format!("Expected key {} to be present", stringify!(#k))).to_string())
         }
     });
-
-    // let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
-    // let secret_name = format!("/{}/{}", env, #actual_base_secret_name);
 
     quote! {
         async fn get_secret(
@@ -63,7 +60,7 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
             let content = output
                 .secret_string()
                 .map_or_else(|| "{}".to_string(), |v| v.to_string());
-            serde_json::from_str(&content).unwrap()
+            serde_json::from_str(&content).expect("Expected to be able to parse the secret value")
         }
 
         impl #secret_struct_name {

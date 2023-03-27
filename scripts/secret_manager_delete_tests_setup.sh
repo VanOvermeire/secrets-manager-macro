@@ -14,3 +14,4 @@ function force_delete_secret() {
 force_delete_secret "$SECRET_NAME_WITH_PREFIX_DEV"
 force_delete_secret "$SECRET_NAME_WITH_PREFIX_PROD"
 force_delete_secret "$SECRET_NAME_WITHOUT_PREFIX"
+force_delete_secret "$INVALID_JSON_SECRET"
