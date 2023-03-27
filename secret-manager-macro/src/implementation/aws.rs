@@ -1,31 +1,12 @@
 use std::collections::HashMap;
 
-use aws_sdk_secretsmanager::Client;
-use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::output::{GetSecretValueOutput, ListSecretsOutput};
-use aws_sdk_secretsmanager::types::SdkError;
 
 use crate::implementation::errors::RetrievalError;
-use crate::implementation::errors::RetrievalError::MissingEnv;
+use crate::implementation::sm_client::SecretManagerClient;
+use crate::implementation::transformations::ValidatedSecrets;
 
-// TODO client struct + separate file
-async fn build_client() -> Client {
-    let shared_config = aws_config::from_env().load().await;
-    Client::new(&shared_config)
-}
-
-async fn list_secrets(client: &Client) -> Result<ListSecretsOutput, SdkError<ListSecretsError>> {
-    client.list_secrets().send().await
-}
-
-async fn get_secret(client: &Client, secret_name: &str) -> Result<GetSecretValueOutput, SdkError<GetSecretValueError>> {
-    client
-        .get_secret_value()
-        .secret_id(secret_name)
-        .send()
-        .await
-}
-
+// TODO maybe these become helpers for the sm client file
 fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<String, String>, RetrievalError> {
     let content = output
         .secret_string()
@@ -59,58 +40,61 @@ fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>
 }
 
 // would be nice to also support suffix (secret-something/dev)? but would also need to *know* where this is for generating the right 'get' call in output
-fn get_full_and_base_secret(found_secret_names: &[String], envs: &[String]) -> (String, String) {
-    if envs.is_empty() {
-        let full = found_secret_names.iter()
-            .find(|s| s.contains("/dev/"))
-            .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
-            .to_string();
-        let base = full.replace("/dev/", "");
+// fn get_full_and_base_secret(found_secret_names: &[String], envs: &[String]) -> (String, String) {
+//     if envs.is_empty() {
+//         let full = found_secret_names.iter()
+//             .find(|s| s.contains("/dev/"))
+//             .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
+//             .to_string();
+//         let base = full.replace("/dev/", "");
+//
+//         (full, base)
+//     } else {
+//         let full = found_secret_names.iter()
+//             .find(|s| s.contains("/dev/"))
+//             .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
+//             .to_string();
+//         let base = envs.iter().fold(full.clone(), |acc, curr| {
+//             acc.replace(&format!("/{curr}/"), "")
+//         });
+//
+//         (full, base)
+//     }
+// }
+//
+// // TODO return ValidatedSecrets - and use that in the next methods - and move to separate package
+// fn validate_secrets(found_secret_names: Vec<String>, envs: &Vec<String>) -> Result<Vec<String>, RetrievalError> {
+//     if envs.is_empty() {
+//         Ok(found_secret_names)
+//     } else {
+//         let matched: Vec<String> = found_secret_names.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
+//
+//         if matched.len() == envs.len() {
+//             Ok(matched)
+//         } else {
+//             Err(MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
+//         }
+//     }
+// }
 
-        (full, base)
-    } else {
-        let full = found_secret_names.iter()
-            .find(|s| s.contains("/dev/"))
-            .unwrap_or_else(|| found_secret_names.first().expect("Found secrets to contain at least one secret"))
-            .to_string();
-        let base = envs.iter().fold(full.clone(), |acc, curr| {
-            acc.replace(&format!("/{curr}/"), "")
-        });
-
-        (full, base)
-    }
-}
-
-// TODO return ValidatedSecrets - and use that in the next methods - and move to separate package
-fn validate_secrets(found_secret_names: Vec<String>, envs: &Vec<String>) -> Result<Vec<String>, RetrievalError> {
-    if envs.is_empty() {
-        Ok(found_secret_names)
-    } else {
-        let matched: Vec<String> = found_secret_names.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
-
-        if matched.len() == envs.len() {
-            Ok(matched)
-        } else {
-            Err(MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
-        }
-    }
-}
-
-async fn call_secret_manager(base_secret_names: Vec<String>, envs: &Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
-    let client = build_client().await;
-
-    let list_result = list_secrets(&client).await?;
+async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
+    let client = SecretManagerClient::new().await;
+    let list_result = client.list_secrets().await?;
     let found_secret_names = filter_secrets_list(list_result, base_secret_names)?;
-    let matched_secrets = validate_secrets(found_secret_names, envs)?;
-    let (full_secret_name, actual_base_name) = get_full_and_base_secret(&matched_secrets, envs);
 
-    let secret_value = get_secret(&client, &full_secret_name).await?;
+    let validated_secrets = ValidatedSecrets::new(found_secret_names, envs)?;
+    let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
+
+    // let matched_secrets = validate_secrets(found_secret_names, envs)?;
+    // let (full_secret_name, actual_base_name) = get_full_and_base_secret(&matched_secrets, envs);
+
+    let secret_value = client.get_secret(&full_secret_name).await?;
     get_secret_value_as_map(secret_value).map(|v| (actual_base_name, v))
 }
 
 pub fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
-    rt.block_on(call_secret_manager(base_secret_names, &envs))
+    rt.block_on(call_secret_manager(base_secret_names, envs))
 }
 
 #[cfg(test)]
@@ -118,68 +102,6 @@ mod tests {
     use aws_sdk_secretsmanager::model::SecretListEntry;
 
     use super::*;
-
-    #[test]
-    fn validate_should_work_when_all_envs_are_present_filtering_out_unknowns() {
-        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string(), "/fake/sample-secret".to_string()];
-        let envs = vec!["dev".to_string(), "prod".to_string()];
-
-        let actual = validate_secrets(found_secrets, &envs);
-
-        assert!(actual.is_ok());
-        assert_eq!(actual.unwrap().len(), 2);
-    }
-
-    #[test]
-    fn validate_should_work_when_no_envs_are_present() {
-        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string()];
-        let envs = vec![];
-
-        let actual = validate_secrets(found_secrets, &envs);
-
-        assert!(actual.is_ok());
-        assert_eq!(actual.unwrap().len(), 2);
-    }
-
-    #[test]
-    fn validate_should_fail_when_not_all_envs_are_present() {
-        let found_secrets = vec!["/prod/sample-secret".to_string()];
-        let envs = vec!["dev".to_string(), "prod".to_string()];
-
-        let actual = validate_secrets(found_secrets, &envs);
-
-        assert!(actual.is_err());
-    }
-
-    #[test]
-    fn get_full_and_base_secret_should_by_default_prefer_dev() {
-        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string()];
-
-        let (actual_full, actual_base) = get_full_and_base_secret(&found_secrets, &vec![]);
-
-        assert_eq!(actual_full, "/dev/sample-secret");
-        assert_eq!(actual_base, "sample-secret");
-    }
-
-    #[test]
-    fn get_full_and_base_secret_should_get_an_env_when_dev_is_not_available() {
-        let found_secrets = vec!["/prod/sample-secret".to_string(), "/acc/sample-secret".to_string()];
-
-        let (actual_full, actual_base) = get_full_and_base_secret(&found_secrets, &vec!["prod".to_string(), "acc".to_string()]);
-
-        assert_eq!(actual_full, "/prod/sample-secret");
-        assert_eq!(actual_base, "sample-secret");
-    }
-
-    #[test]
-    fn get_full_and_base_secret_should_by_fallback_to_first_secret() {
-        let found_secrets = vec!["sample-secret".to_string()];
-
-        let (actual_full, actual_base) = get_full_and_base_secret(&found_secrets, &vec![]);
-
-        assert_eq!(actual_full, "sample-secret");
-        assert_eq!(actual_base, "sample-secret");
-    }
 
     #[test]
     fn filter_secrets_list_should_find_secret_with_given_name() {

@@ -1,8 +1,64 @@
 use std::collections::HashMap;
+
 use proc_macro2::{Ident, Span};
+
+use crate::implementation::errors::RetrievalError;
 
 const HYPHEN: char = '-';
 const UNDERSCORE: char = '_';
+
+pub struct ValidatedSecrets {
+    secrets: Vec<String>,
+    envs: Vec<String>,
+}
+
+impl ValidatedSecrets {
+    // TODO match with guard?
+    pub fn new(found_secret_names: Vec<String>, envs: Vec<String>) -> Result<Self, RetrievalError> {
+        if found_secret_names.is_empty() {
+            Err(RetrievalError::NotFound("Did not find any secrets".to_string())) // should not occur in current setup though
+        } else if envs.is_empty() {
+            Ok(ValidatedSecrets {
+                secrets: found_secret_names,
+                envs,
+            })
+        } else {
+            let matched: Vec<String> = found_secret_names.into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
+
+            if matched.len() == envs.len() {
+                Ok(ValidatedSecrets {
+                    secrets: matched,
+                    envs,
+                })
+            } else {
+                Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
+            }
+        }
+    }
+
+    // would be nice to also support suffix (secret-something/dev)? but would also need to *know* where this is for generating the right 'get' call in output
+    pub fn get_full_and_base_secret(&self) -> (String, String) {
+        if self.envs.is_empty() {
+            let full = self.secrets.iter()
+                .find(|s| s.contains("/dev/"))
+                .unwrap_or_else(|| self.secrets.first().expect("Found secrets to contain at least one secret"))
+                .to_string();
+            let base = full.replace("/dev/", "");
+
+            (full, base)
+        } else {
+            let full = self.secrets.iter()
+                .find(|s| s.contains("/dev/"))
+                .unwrap_or_else(|| self.secrets.first().expect("Found secrets to contain at least one secret"))
+                .to_string();
+            let base = self.envs.iter().fold(full.clone(), |acc, curr| {
+                acc.replace(&format!("/{curr}/"), "")
+            });
+
+            (full, base)
+        }
+    }
+}
 
 pub fn possible_base_names(secret_struct_name: &str) -> Vec<String> {
     let with_hyphen = alternative_without_first_letter(secret_struct_name, |mut acc| {
@@ -49,6 +105,74 @@ pub fn keys_as_ident_list(key_map: HashMap<String, String>) -> Vec<Ident> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn validate_should_work_when_all_envs_are_present_filtering_out_unknowns() {
+        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string(), "/fake/sample-secret".to_string()];
+        let envs = vec!["dev".to_string(), "prod".to_string()];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs);
+
+        assert!(actual.is_ok());
+        assert_eq!(actual.unwrap().secrets.len(), 2);
+    }
+
+    #[test]
+    fn validate_should_work_when_no_envs_are_present() {
+        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string()];
+        let envs = vec![];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs);
+
+        assert!(actual.is_ok());
+        assert_eq!(actual.unwrap().secrets.len(), 2);
+    }
+
+    #[test]
+    fn validate_should_fail_when_not_all_envs_are_present() {
+        let found_secrets = vec!["/prod/sample-secret".to_string()];
+        let envs = vec!["dev".to_string(), "prod".to_string()];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs);
+
+        assert!(actual.is_err());
+    }
+
+    #[test]
+    fn get_full_and_base_secret_should_by_default_prefer_dev() {
+        let found_secrets = vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string()];
+        let envs = vec![];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs).unwrap();
+        let (actual_full, actual_base) = actual.get_full_and_base_secret();
+
+        assert_eq!(actual_full, "/dev/sample-secret");
+        assert_eq!(actual_base, "sample-secret");
+    }
+
+    #[test]
+    fn get_full_and_base_secret_should_get_an_env_when_dev_is_not_available() {
+        let found_secrets = vec!["/prod/sample-secret".to_string(), "/acc/sample-secret".to_string()];
+        let envs = vec!["prod".to_string(), "acc".to_string()];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs).unwrap();
+        let (actual_full, actual_base) = actual.get_full_and_base_secret();
+
+        assert_eq!(actual_full, "/prod/sample-secret");
+        assert_eq!(actual_base, "sample-secret");
+    }
+
+    #[test]
+    fn get_full_and_base_secret_should_by_fallback_to_first_secret() {
+        let found_secrets = vec!["sample-secret".to_string()];
+        let envs = vec![];
+
+        let actual = ValidatedSecrets::new(found_secrets, envs).unwrap();
+        let (actual_full, actual_base) = actual.get_full_and_base_secret();
+
+        assert_eq!(actual_full, "sample-secret");
+        assert_eq!(actual_base, "sample-secret");
+    }
 
     #[test]
     fn possible_base_names_should_create_alternative_secret_struct_names_and_add_to_the_original() {
