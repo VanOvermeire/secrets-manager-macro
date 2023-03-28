@@ -7,6 +7,7 @@ use crate::implementation::transformations::ValidatedSecrets;
 use aws_sdk_secretsmanager::Client;
 use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::types::SdkError;
+use tokio_stream::StreamExt;
 
 struct SecretManagerClient {
     client: Client
@@ -20,8 +21,14 @@ impl SecretManagerClient {
         }
     }
 
-    async fn list_secrets(&self) -> Result<ListSecretsOutput, SdkError<ListSecretsError>> {
-        self.client.list_secrets().send().await
+    async fn list_secrets(&self) -> Result<Vec<ListSecretsOutput>, SdkError<ListSecretsError>> {
+        // can use filters, though they are only prefix (so won't work when no envs)
+        // for now assuming most accounts don't have many thousands of secrets to go through
+        self.client.list_secrets()
+            .into_paginator()
+            .send()
+            .collect()
+            .await
     }
 
     async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
@@ -50,11 +57,9 @@ fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<Strin
     Ok(serde_json::from_str(&content)?)
 }
 
-fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
-    let possible_secrets: Vec<String> = output
-        .secret_list()
-        .ok_or_else(|| RetrievalError::NotFound("No secrets found in AWS account".to_string()))?
-        .iter()
+fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
+    let possible_secrets: Vec<String> = output.iter().filter_map(|v| v.secret_list())
+        .flatten()
         .filter_map(|v| v.name())
         .map(|v| v.to_string())
         .filter(|v| {
@@ -75,7 +80,7 @@ fn filter_secrets_list(output: ListSecretsOutput, base_secret_names: Vec<String>
     }
 }
 
-pub async fn call_secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
+pub async fn secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
     let found_secret_names = client.get_filtered_secret_list(base_secret_names).await?;
 
@@ -104,10 +109,10 @@ mod tests {
 
     #[test]
     fn filter_secrets_list_should_find_secret_ignoring_secret_that_looks_similar() {
-        let list = ListSecretsOutput::builder()
+        let list = vec![ListSecretsOutput::builder()
             .secret_list(SecretListEntry::builder().name("AnotherKindOfSampleSecret").build())
             .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
-            .build();
+            .build()];
         let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
 
         let actual = filter_secrets_list(list, possible_names).unwrap();
@@ -126,7 +131,7 @@ mod tests {
 
     #[test]
     fn filter_secrets_list_should_return_error_when_there_are_no_secrets() {
-        let list = ListSecretsOutput::builder().build();
+        let list = vec![ListSecretsOutput::builder().build()];
 
         let actual = filter_secrets_list(list, vec!["DoesNotMatter".to_string()]);
 
@@ -170,12 +175,12 @@ mod tests {
         assert!(actual.is_err());
     }
 
-    fn create_secret_list() -> ListSecretsOutput {
+    fn create_secret_list() -> Vec<ListSecretsOutput> {
         let list = ListSecretsOutput::builder()
             .secret_list(SecretListEntry::builder().name("/dev/fake-secret").build())
             .secret_list(SecretListEntry::builder().name("FakeSecret").build())
             .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
             .build();
-        list
+        vec![list]
     }
 }

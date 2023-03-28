@@ -81,8 +81,10 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 - Check all env contents
 - Attribute for changing secret name
 - Attribute for checking **selection** of envs + allow disabling of compile time checks (more useful once you can add fields to the struct...)? Or 'saving' of a check?
-- Handling nextToken for list secrets
-- Refresh method (and keep a validity timestamp)
-- Lazy static option?
+- Refresh method (and keep a validity timestamp?)
 - Allow selection of secrets by adding fields to the struct
+
+## Improvements, extensions
+
+- Lazy static as an option?
 - Parameter store as an alternative for loading? As an additional macro?
