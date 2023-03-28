@@ -68,11 +68,11 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
         .map(|v| v.to_string())
         .filter(|v| {
             match env_setting {
-                EnvSetting::NONE => {
+                EnvSetting::None => {
                     // we expect an exact match with any of our base secrets
                     base_secret_names.contains(v)
                 }
-                EnvSetting::ENVS(envs) => {
+                EnvSetting::Env(envs) => {
                     // we expect a match with any of the names *prefixed* by any of the envs
                     base_secret_names.iter()
                         .flat_map(|b| envs.iter().map(|e| format!("/{e}/{b}")).collect::<Vec<String>>())
@@ -115,7 +115,7 @@ mod tests {
     fn filter_secrets_list_should_find_secret_with_given_prefixed_name() {
         let list = create_secret_list();
         let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
-        let env_setting = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
+        let env_setting = EnvSetting::Env(vec!["dev".to_string(), "prod".to_string()]);
 
         let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
 
@@ -126,7 +126,7 @@ mod tests {
     fn filter_secrets_list_should_find_secret_with_exact_name_when_no_envs() {
         let list = create_secret_list();
         let possible_names = vec!["RealSecret".to_string(), "real-secret".to_string(), "real_secret".to_string()];
-        let env_setting = EnvSetting::NONE;
+        let env_setting = EnvSetting::None;
 
         let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
 
@@ -140,7 +140,7 @@ mod tests {
             .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
             .build()];
         let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
-        let env_setting = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
+        let env_setting = EnvSetting::Env(vec!["dev".to_string(), "prod".to_string()]);
 
         let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
 
@@ -150,7 +150,7 @@ mod tests {
     #[test]
     fn filter_secrets_list_should_return_error_for_unknown_secret() {
         let list = create_secret_list();
-        let env_setting = EnvSetting::NONE;
+        let env_setting = EnvSetting::None;
 
         let actual = filter_secrets_list(list, vec!["Unknown".to_string()], &env_setting);
 
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn filter_secrets_list_should_return_error_when_there_are_no_secrets() {
         let list = vec![ListSecretsOutput::builder().build()];
-        let env_setting = EnvSetting::NONE;
+        let env_setting = EnvSetting::None;
 
         let actual = filter_secrets_list(list, vec!["DoesNotMatter".to_string()], &env_setting);
 

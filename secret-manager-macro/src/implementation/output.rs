@@ -43,12 +43,12 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
     });
 
     let build_secret_name = match env_setting {
-        EnvSetting::NONE => {
+        EnvSetting::None => {
             quote! {
                 let secret_name = #actual_base_secret_name;
             }
         }
-        EnvSetting::ENVS(_) => {
+        EnvSetting::Env(_) => {
             quote! {
                 let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
                 let secret_name = format!("/{}/{}", env, #actual_base_secret_name);

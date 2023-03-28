@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::collections::HashMap;
 
 use proc_macro2::{Ident, Span};
@@ -17,28 +18,21 @@ pub struct ValidatedSecrets {
 impl ValidatedSecrets {
     pub fn new(found_secret_names: NonEmptySecrets, env_setting: EnvSetting) -> Result<Self, RetrievalError> {
         match &env_setting {
-            EnvSetting::NONE => {
-                if found_secret_names.0.len() != 1 {
-                    Err(RetrievalError::DuplicateSecrets(format!("Expected to find an exact match, instead found multiple possible secrets: {}. Please specify an exact name", found_secret_names.0.join(","))))
-                } else {
-                    Ok(ValidatedSecrets {
-                        secrets: found_secret_names.0,
-                        env_setting,
-                    })
-                }
-            }
-            EnvSetting::ENVS(envs) => {
+            EnvSetting::None if found_secret_names.0.len() != 1 => Err(RetrievalError::DuplicateSecrets(format!("Expected to find an exact match, instead found multiple possible secrets: {}. Please specify an exact name", found_secret_names.0.join(",")))),
+            EnvSetting::None => Ok(ValidatedSecrets {
+                secrets: found_secret_names.0,
+                env_setting,
+            }),
+            EnvSetting::Env(envs) => {
                 let matched: Vec<String> = found_secret_names.0.clone().into_iter().filter(|s| envs.iter().any(|e| s.contains(e))).collect();
 
-                if matched.len() == envs.len() {
-                    Ok(ValidatedSecrets {
+                match matched.len().cmp(&envs.len()) {
+                    Ordering::Equal => Ok(ValidatedSecrets {
                         secrets: matched,
                         env_setting,
-                    })
-                } else if matched.len() > envs.len() {
-                    Err(RetrievalError::DuplicateSecrets(format!("Expected to find {} secrets, but found more: {}. Please specify an exact name", envs.len(), found_secret_names.0.join(","))))
-                } else {
-                    Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(","))))
+                    }),
+                    Ordering::Less => Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(",")))),
+                    Ordering::Greater => Err(RetrievalError::DuplicateSecrets(format!("Expected to find {} secrets, but found more: {}. Please specify an exact name", envs.len(), found_secret_names.0.join(",")))),
                 }
             }
         }
@@ -47,16 +41,15 @@ impl ValidatedSecrets {
     // would be nice to also support suffix (secret-something/dev)? but would also need to *know* where this is for generating the right 'get' call in output
     pub fn get_full_and_base_secret(&self) -> (String, String) {
         match &self.env_setting {
-            EnvSetting::NONE => {
+            EnvSetting::None => {
                 // validated during creation: we have *one* match. Panic should not occur
-                let full = self.secrets.iter()
-                    .next()
+                let full = self.secrets.first()
                     .unwrap_or_else(|| self.secrets.first().expect("Found secrets to contain at least one secret"))
                     .to_string();
                 // there is no prefix, so base and full are identical
                 (full.clone(), full)
             }
-            EnvSetting::ENVS(envs) => {
+            EnvSetting::Env(envs) => {
                 // TODO this assumes that you passed in a dev env. Perhaps better to check all secrets?
                 //  alternatively, pick one secret and assume they all have the same fields
                 let full = self.secrets.iter()
@@ -122,7 +115,7 @@ mod tests {
     #[test]
     fn validate_should_work_when_no_envs_are_present_and_one_secret() {
         let found_secrets = NonEmptySecrets(vec!["sample-secret".to_string()]);
-        let env = EnvSetting::NONE;
+        let env = EnvSetting::None;
 
         let actual = ValidatedSecrets::new(found_secrets, env);
 
@@ -133,7 +126,7 @@ mod tests {
     #[test]
     fn validate_should_fail_when_no_envs_are_present_and_multiple_secrets() {
         let found_secrets = NonEmptySecrets(vec!["sample-secret".to_string(), "fake-secret".to_string()]);
-        let env = EnvSetting::NONE;
+        let env = EnvSetting::None;
 
         let actual = ValidatedSecrets::new(found_secrets, env);
 
@@ -143,7 +136,7 @@ mod tests {
     #[test]
     fn validate_should_work_when_all_envs_are_present_filtering_out_unknowns() {
         let found_secrets = NonEmptySecrets(vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string(), "/fake/sample-secret".to_string()]);
-        let envs = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
+        let envs = EnvSetting::Env(vec!["dev".to_string(), "prod".to_string()]);
 
         let actual = ValidatedSecrets::new(found_secrets, envs);
 
@@ -154,7 +147,7 @@ mod tests {
     #[test]
     fn validate_should_fail_when_too_many_envs_are_present() {
         let found_secrets = NonEmptySecrets(vec!["/prod/sample-secret".to_string(), "/dev/sample-secret".to_string(), "/prod/SampleSecret".to_string(), "/fake/sample-secret".to_string()]);
-        let envs = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
+        let envs = EnvSetting::Env(vec!["dev".to_string(), "prod".to_string()]);
 
         let actual = ValidatedSecrets::new(found_secrets, envs);
 
@@ -164,7 +157,7 @@ mod tests {
     #[test]
     fn validate_should_fail_when_not_all_envs_are_present() {
         let found_secrets = NonEmptySecrets(vec!["/prod/sample-secret".to_string()]);
-        let env = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
+        let env = EnvSetting::Env(vec!["dev".to_string(), "prod".to_string()]);
 
         let actual = ValidatedSecrets::new(found_secrets, env);
 
@@ -174,7 +167,7 @@ mod tests {
     #[test]
     fn get_full_and_base_secret_should_fail_when_no_multiple_matches_for_none_env() {
         let found_secrets = NonEmptySecrets(vec!["sample-secret".to_string(), "OtherSecret".to_string()]);
-        let env = EnvSetting::NONE;
+        let env = EnvSetting::None;
 
         let actual = ValidatedSecrets::new(found_secrets, env);
 
@@ -184,7 +177,7 @@ mod tests {
     #[test]
     fn get_full_and_base_secret_should_get_exact_match_and_identical_base_and_full() {
         let found_secrets = NonEmptySecrets(vec!["sample-secret".to_string()]);
-        let env = EnvSetting::NONE;
+        let env = EnvSetting::None;
 
         let actual = ValidatedSecrets::new(found_secrets, env).unwrap();
         let (actual_full, actual_base) = actual.get_full_and_base_secret();
@@ -196,7 +189,7 @@ mod tests {
     #[test]
     fn get_full_and_base_secret_should_get_an_env_when_dev_is_not_available() {
         let found_secrets = NonEmptySecrets(vec!["/prod/sample-secret".to_string(), "/acc/sample-secret".to_string()]);
-        let env = EnvSetting::ENVS(vec!["prod".to_string(), "acc".to_string()]);
+        let env = EnvSetting::Env(vec!["prod".to_string(), "acc".to_string()]);
 
         let actual = ValidatedSecrets::new(found_secrets, env).unwrap();
         let (actual_full, actual_base) = actual.get_full_and_base_secret();
@@ -208,7 +201,7 @@ mod tests {
     #[test]
     fn get_full_and_base_secret_should_by_fallback_to_first_secret() {
         let found_secrets = NonEmptySecrets(vec!["sample-secret".to_string()]);
-        let env = EnvSetting::NONE;
+        let env = EnvSetting::None;
 
         let actual = ValidatedSecrets::new(found_secrets, env).unwrap();
         let (actual_full, actual_base) = actual.get_full_and_base_secret();
