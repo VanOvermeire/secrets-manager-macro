@@ -20,14 +20,19 @@ impl Parse for Attributes {
     }
 }
 
-// return wrapper instead for some more safety?
-pub fn get_environments(attributes: TokenStream) -> Vec<String> {
+pub enum EnvSetting {
+    NONE,
+    ENVS(Vec<String>)
+}
+
+pub fn get_environments(attributes: TokenStream) -> EnvSetting {
     let possible_attributes: Result<Attributes, syn::Error> = parse2(attributes);
 
     possible_attributes
         .map(|a| a.env)
         .map(|env| env.iter().map(|v| v.to_string()).collect())
-        .unwrap_or_else(|_| vec![])
+        .map(EnvSetting::ENVS)
+        .unwrap_or_else(|_| EnvSetting::NONE)
 }
 
 #[cfg(test)]
@@ -53,9 +58,14 @@ mod tests {
 
         let actual = get_environments(stream);
 
-        assert_eq!(actual.len(), 2);
-        assert_eq!(actual[0], "dev".to_string());
-        assert_eq!(actual[1], "prod".to_string());
+        match actual {
+            EnvSetting::ENVS(actual_vec) => {
+                assert_eq!(actual_vec.len(), 2);
+                assert_eq!(actual_vec[0], "dev".to_string());
+                assert_eq!(actual_vec[1], "prod".to_string());
+            }
+            EnvSetting::NONE => panic!("Expected ENVS"),
+        }
     }
 
     #[test]
@@ -64,6 +74,9 @@ mod tests {
 
         let actual = get_environments(stream);
 
-        assert_eq!(actual.len(), 0);
+        match actual {
+            EnvSetting::NONE => {}
+            EnvSetting::ENVS(_) => panic!("Expected NONE for env"),
+        }
     }
 }

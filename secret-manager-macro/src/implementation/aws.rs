@@ -8,6 +8,7 @@ use aws_sdk_secretsmanager::Client;
 use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::types::SdkError;
 use tokio_stream::StreamExt;
+use crate::implementation::input::EnvSetting;
 
 struct SecretManagerClient {
     client: Client
@@ -31,7 +32,7 @@ impl SecretManagerClient {
             .await
     }
 
-    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
+    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<NonEmptySecrets, RetrievalError> {
         let list_result = self.list_secrets().await?;
         filter_secrets_list(list_result, base_secret_names)
     }
@@ -57,7 +58,10 @@ fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<Strin
     Ok(serde_json::from_str(&content)?)
 }
 
-fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<String>) -> Result<Vec<String>, RetrievalError> {
+// could be safer with private field
+pub struct NonEmptySecrets(pub Vec<String>);
+
+fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<String>) -> Result<NonEmptySecrets, RetrievalError> {
     let possible_secrets: Vec<String> = output.iter().filter_map(|v| v.secret_list())
         .flatten()
         .filter_map(|v| v.name())
@@ -76,15 +80,15 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
             ))
         )
     } else {
-        Ok(possible_secrets)
+        Ok(NonEmptySecrets(possible_secrets))
     }
 }
 
-pub async fn secret_manager(base_secret_names: Vec<String>, envs: Vec<String>) -> Result<(String, HashMap<String, String>), RetrievalError> {
+pub async fn secret_manager(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
     let found_secret_names = client.get_filtered_secret_list(base_secret_names).await?;
 
-    let validated_secrets = ValidatedSecrets::new(found_secret_names, envs)?;
+    let validated_secrets = ValidatedSecrets::new(found_secret_names, env_setting)?;
     let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
 
     let secret_value = client.get_secret_as_map(&full_secret_name).await?;
@@ -104,7 +108,7 @@ mod tests {
 
         let actual = filter_secrets_list(list, possible_names).unwrap();
 
-        assert_eq!(actual, vec!["/prod/sample-secret"]);
+        assert_eq!(actual.0, vec!["/prod/sample-secret"]);
     }
 
     #[test]
@@ -117,7 +121,7 @@ mod tests {
 
         let actual = filter_secrets_list(list, possible_names).unwrap();
 
-        assert_eq!(actual, vec!["/prod/sample-secret"]);
+        assert_eq!(actual.0, vec!["/prod/sample-secret"]);
     }
 
     #[test]
