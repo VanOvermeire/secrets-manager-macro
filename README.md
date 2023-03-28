@@ -82,7 +82,7 @@ Next, it will use the `dev` secret values to add fields to the `ExampleSecret` s
 In the above example, `firstKey` is one of those secrets. Like before, the macro expects JSON as the secret value.
 
 The values are only used at runtime, when calling `new()`. At that point, the generated code will look for a secret with the name that
-was found during compilation (`ExampleSecret`, `example-secret` or `example_secret`), prefixed with the contents of the `ENV` variable.
+was found during compilation (`ExampleSecret`, `example-secret` or `example_secret`), prefixed with the contents of the `ENV` _or_ `ENVIRONMENT` environment variable.
 In the above case, assuming the found secret was called `example_secret`, the code will look for `/dev/example_secret`. 
 
 As before, `new` will panic if the secret is not present, values are missing or if the secret value is not valid JSON.
@@ -97,10 +97,10 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 
 ## TODOs
 
+- Add documentation to `lib.rs`
 - GitHub actions publish
 - GitHub end-to-end test with deploy lambda and check output
 
-- Accept ENVIRONMENT as an alternative to ENV (any other env vars candidates)
 - Attribute for changing secret name
 - Only allow the passed in `envs` when calling `new`?
 - Check all env contents

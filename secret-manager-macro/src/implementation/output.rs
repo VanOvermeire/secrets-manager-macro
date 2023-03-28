@@ -50,8 +50,11 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
         }
         EnvSetting::Env(_) => {
             quote! {
-                let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
-                let secret_name = format!("/{}/{}", env, #actual_base_secret_name);
+                let env_vec: Vec<String> = ["ENV", "ENVIRONMENT"].iter().flat_map(std::env::var).collect();
+                let secret_name = env_vec
+                    .first()
+                    .map(|env| format!("/{}/{}", env, #actual_base_secret_name))
+                    .expect("Expected environment variable 'ENV' or 'ENVIRONMENT' to be present");
             }
         }
     };
@@ -82,9 +85,6 @@ fn create_init_for_secrets(keys: &[Ident], secret_struct_name: &Ident, actual_ba
             pub async fn new() -> Self {
                 let shared_config = aws_config::from_env().load().await;
                 let client = aws_sdk_secretsmanager::Client::new(&shared_config);
-
-                // let env = std::env::var("ENV").expect("Expected environment variable 'ENV' to be present");
-                // let secret_name = format!("/{}/{}", env, #actual_base_secret_name);
 
                 #build_secret_name
 
