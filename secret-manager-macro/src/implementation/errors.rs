@@ -11,13 +11,14 @@ pub enum RetrievalError {
     Aws(String),
     NotFound(String),
     MissingEnv(String),
+    DuplicateSecrets(String),
     Json,
 }
 
 impl RetrievalError {
     pub fn into_compile_error(self, correct_span: Span) -> TokenStream {
         match self {
-            RetrievalError::Aws(e) | RetrievalError::NotFound(e) => syn::Error::new(correct_span, e).into_compile_error(),
+            RetrievalError::Aws(e) | RetrievalError::NotFound(e) | RetrievalError::DuplicateSecrets(e) => syn::Error::new(correct_span, e).into_compile_error(),
             RetrievalError::Json => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
             RetrievalError::MissingEnv(e) => syn::Error::new(correct_span, e).into_compile_error(),
         }

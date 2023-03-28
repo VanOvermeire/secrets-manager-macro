@@ -20,6 +20,7 @@ impl Parse for Attributes {
     }
 }
 
+#[derive(Clone)]
 pub enum EnvSetting {
     NONE,
     ENVS(Vec<String>)

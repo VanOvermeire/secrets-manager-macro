@@ -32,9 +32,9 @@ impl SecretManagerClient {
             .await
     }
 
-    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>) -> Result<NonEmptySecrets, RetrievalError> {
+    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>, env_setting: &EnvSetting) -> Result<NonEmptySecrets, RetrievalError> {
         let list_result = self.list_secrets().await?;
-        filter_secrets_list(list_result, base_secret_names)
+        filter_secrets_list(list_result, base_secret_names, env_setting)
     }
 
     async fn get_secret(&self, secret_name: &str) -> Result<GetSecretValueOutput, SdkError<GetSecretValueError>> {
@@ -61,15 +61,24 @@ fn get_secret_value_as_map(output: GetSecretValueOutput) -> Result<HashMap<Strin
 // could be safer with private field
 pub struct NonEmptySecrets(pub Vec<String>);
 
-fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<String>) -> Result<NonEmptySecrets, RetrievalError> {
+fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<String>, env_setting: &EnvSetting) -> Result<NonEmptySecrets, RetrievalError> {
     let possible_secrets: Vec<String> = output.iter().filter_map(|v| v.secret_list())
         .flatten()
         .filter_map(|v| v.name())
         .map(|v| v.to_string())
         .filter(|v| {
-            // exact match *or* at least with a forward slash in front
-            base_secret_names.contains(v) ||
-                base_secret_names.iter().any(|name| v.contains(&format!("/{}", name)))
+            match env_setting {
+                EnvSetting::NONE => {
+                    // we expect an exact match with any of our base secrets
+                    base_secret_names.contains(v)
+                }
+                EnvSetting::ENVS(envs) => {
+                    // we expect a match with any of the names *prefixed* by any of the envs
+                    base_secret_names.iter()
+                        .flat_map(|b| envs.iter().map(|e| format!("/{e}/{b}")).collect::<Vec<String>>())
+                        .any(|combined| v.contains(&combined))
+                }
+            }
         }).collect();
 
     if possible_secrets.is_empty() {
@@ -84,9 +93,10 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
     }
 }
 
+// TODO maybe doing too much. should it call the validated secret stuff?
 pub async fn secret_manager(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
-    let found_secret_names = client.get_filtered_secret_list(base_secret_names).await?;
+    let found_secret_names = client.get_filtered_secret_list(base_secret_names, &env_setting).await?;
 
     let validated_secrets = ValidatedSecrets::new(found_secret_names, env_setting)?;
     let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
@@ -102,24 +112,37 @@ mod tests {
     use super::*;
 
     #[test]
-    fn filter_secrets_list_should_find_secret_with_given_name() {
+    fn filter_secrets_list_should_find_secret_with_given_prefixed_name() {
         let list = create_secret_list();
         let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
+        let env_setting = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
 
-        let actual = filter_secrets_list(list, possible_names).unwrap();
+        let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
 
         assert_eq!(actual.0, vec!["/prod/sample-secret"]);
     }
 
     #[test]
-    fn filter_secrets_list_should_find_secret_ignoring_secret_that_looks_similar() {
+    fn filter_secrets_list_should_find_secret_with_exact_name_when_no_envs() {
+        let list = create_secret_list();
+        let possible_names = vec!["RealSecret".to_string(), "real-secret".to_string(), "real_secret".to_string()];
+        let env_setting = EnvSetting::NONE;
+
+        let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
+
+        assert_eq!(actual.0, vec!["RealSecret"]);
+    }
+
+    #[test]
+    fn filter_secrets_list_should_find_secret_ignoring_prefixed_secret_that_looks_similar() {
         let list = vec![ListSecretsOutput::builder()
             .secret_list(SecretListEntry::builder().name("AnotherKindOfSampleSecret").build())
             .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
             .build()];
         let possible_names = vec!["SampleSecret".to_string(), "sample-secret".to_string(), "sample_secret".to_string()];
+        let env_setting = EnvSetting::ENVS(vec!["dev".to_string(), "prod".to_string()]);
 
-        let actual = filter_secrets_list(list, possible_names).unwrap();
+        let actual = filter_secrets_list(list, possible_names, &env_setting).unwrap();
 
         assert_eq!(actual.0, vec!["/prod/sample-secret"]);
     }
@@ -127,8 +150,9 @@ mod tests {
     #[test]
     fn filter_secrets_list_should_return_error_for_unknown_secret() {
         let list = create_secret_list();
+        let env_setting = EnvSetting::NONE;
 
-        let actual = filter_secrets_list(list, vec!["Unknown".to_string()]);
+        let actual = filter_secrets_list(list, vec!["Unknown".to_string()], &env_setting);
 
         assert!(actual.is_err());
     }
@@ -136,8 +160,9 @@ mod tests {
     #[test]
     fn filter_secrets_list_should_return_error_when_there_are_no_secrets() {
         let list = vec![ListSecretsOutput::builder().build()];
+        let env_setting = EnvSetting::NONE;
 
-        let actual = filter_secrets_list(list, vec!["DoesNotMatter".to_string()]);
+        let actual = filter_secrets_list(list, vec!["DoesNotMatter".to_string()], &env_setting);
 
         assert!(actual.is_err());
     }
@@ -184,6 +209,7 @@ mod tests {
             .secret_list(SecretListEntry::builder().name("/dev/fake-secret").build())
             .secret_list(SecretListEntry::builder().name("FakeSecret").build())
             .secret_list(SecretListEntry::builder().name("/prod/sample-secret").build())
+            .secret_list(SecretListEntry::builder().name("RealSecret").build())
             .build();
         vec![list]
     }

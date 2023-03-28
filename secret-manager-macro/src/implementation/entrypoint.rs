@@ -28,10 +28,10 @@ pub fn create_secret_manager(attributes: TokenStream, item: TokenStream) -> Toke
     let secret_struct_name = input.ident.to_string();
     let possible_names = possible_base_names(&secret_struct_name);
 
-    match retrieve_real_name_and_keys(possible_names, env_setting) {
+    match retrieve_real_name_and_keys(possible_names, env_setting.clone()) {
         Ok((actual_base_secret_name, key_map)) => {
             let keys: Vec<Ident> = keys_as_ident_list(key_map);
-            create_output(&input, &keys, &actual_base_secret_name)
+            create_output(&input, &keys, &actual_base_secret_name, &env_setting)
         }
         Err(e) => e.into_compile_error(input.ident.span())
     }
