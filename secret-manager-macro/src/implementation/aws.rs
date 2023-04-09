@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
 use aws_sdk_secretsmanager::output::{GetSecretValueOutput, ListSecretsOutput};
-
-use crate::implementation::errors::RetrievalError;
-use crate::implementation::transformations::ValidatedSecrets;
 use aws_sdk_secretsmanager::Client;
 use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::types::SdkError;
-use tokio_stream::StreamExt;
+use crate::implementation::errors::RetrievalError;
+use crate::implementation::transformations::ValidatedSecrets;
 use crate::implementation::input::EnvSetting;
+use tokio_stream::StreamExt;
 
 struct SecretManagerClient {
     client: Client

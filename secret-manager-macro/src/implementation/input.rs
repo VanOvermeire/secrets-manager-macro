@@ -1,17 +1,9 @@
 use proc_macro2::{Ident, TokenStream};
-use syn::{parse2, Token};
+use syn::{Token};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::token::{Comma};
 
-// TODO drop the Debugs
-
-#[derive(Debug)]
-struct NestedAttribute {
-    stuff: Punctuated<Ident, Comma>,
-}
-
-#[derive(Debug)]
 struct Attributes {
     optional_name: Option<Ident>,
     envs: Punctuated<Ident, Comma>,
@@ -47,7 +39,7 @@ pub enum EnvSetting {
 }
 
 pub fn get_environments(attributes: TokenStream) -> EnvSetting {
-    let possible_attributes: Result<Attributes, syn::Error> = parse2(attributes);
+    let possible_attributes: Result<Attributes, syn::Error> = syn::parse2(attributes);
 
     possible_attributes
         .map(|a| a.envs)
@@ -67,7 +59,7 @@ mod tests {
     use proc_macro2::Span;
     use super::*;
     use syn::token::{Eq};
-    use quote::{quote, ToTokens};
+    use quote::{ToTokens};
 
     #[test]
     fn get_environments_should_return_all_present_envs() {
