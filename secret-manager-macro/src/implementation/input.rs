@@ -4,18 +4,40 @@ use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::token::{Comma};
 
+// TODO drop the Debugs
+
+#[derive(Debug)]
+struct NestedAttribute {
+    stuff: Punctuated<Ident, Comma>,
+}
+
 #[derive(Debug)]
 struct Attributes {
-    env: Punctuated<Ident, Comma>,
+    optional_name: Option<Ident>,
+    envs: Punctuated<Ident, Comma>,
 }
 
 impl Parse for Attributes {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        let _env_ident: Ident = input.parse()?;
-        let _equals: Token![=] = input.parse()?;
+        eprintln!("{:?}", input);
+
+        let mut optional_name = None;
+        let mut envs: Punctuated<Ident, Comma> = Punctuated::new();
+
+        while !input.is_empty() {
+            let starting_ident: Ident = input.parse()?;
+            let _equals: Token![=] = input.parse()?;
+
+            if starting_ident.to_string().eq("envs") {
+                envs = Punctuated::<Ident, Comma>::parse_terminated(input)?;
+            } else if starting_ident.to_string().eq("name") {
+                optional_name = Some(input.parse()?);
+            }
+        }
 
         Ok(Attributes {
-            env: Punctuated::<Ident, Comma>::parse_terminated(input)?
+            optional_name,
+            envs,
         })
     }
 }
@@ -30,9 +52,15 @@ pub fn get_environments(attributes: TokenStream) -> EnvSetting {
     let possible_attributes: Result<Attributes, syn::Error> = parse2(attributes);
 
     possible_attributes
-        .map(|a| a.env)
+        .map(|a| a.envs)
         .map(|env| env.iter().map(|v| v.to_string()).collect())
-        .map(EnvSetting::Env)
+        .map(|v: Vec<String>| {
+            if v.is_empty() {
+                EnvSetting::None
+            } else {
+                EnvSetting::Env(v)
+            }
+        })
         .unwrap_or_else(|_| EnvSetting::None)
 }
 
@@ -41,13 +69,13 @@ mod tests {
     use proc_macro2::Span;
     use super::*;
     use syn::token::{Eq};
-    use quote::ToTokens;
+    use quote::{quote, ToTokens};
 
     #[test]
     fn get_environments_should_return_all_present_envs() {
         let mut stream = TokenStream::new();
         let mut env_with_equals: Punctuated<Ident, Eq> = Punctuated::new();
-        env_with_equals.push(Ident::new("env", Span::call_site()));
+        env_with_equals.push(Ident::new("envs", Span::call_site()));
         env_with_equals.push_punct(Eq::default());
         env_with_equals.to_tokens(&mut stream);
 
@@ -77,7 +105,7 @@ mod tests {
 
         match actual {
             EnvSetting::None => {}
-            EnvSetting::Env(_) => panic!("Expected NONE for env"),
+            EnvSetting::Env(e) => panic!("Expected NONE for env but got {:?}", e),
         }
     }
 }
