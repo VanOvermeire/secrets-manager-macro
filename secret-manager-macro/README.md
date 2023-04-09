@@ -17,15 +17,18 @@ And if you are running inside an AWS Lambda, you should already have most of the
 ### Simple usage (no environment specific secrets)
 
 ```rust
+use secret_manager_macro::build_secrets_struct;
+
 #[tokio::main]
 async fn main() {
-    #[build_secrets_struct(envs = dev,prod)]
-    struct ExampleSecret {}
+    #[derive(Debug)] // (you can have other annotations in addition to build_secrets_struct)
+    #[build_secrets_struct]
+    struct NoPrefixSecret {}
 
-    let secrets = ExampleSecret::new().await;
+    let secrets = NoPrefixSecret::new().await;
 
     // secrets are properties of the struct, so you can now access them
-    assert_eq!(secrets.firstKey.as_ref(), "firstValue");
+    assert_eq!(secrets.thirdKey.as_ref(), "thirdValue");
 }
 ```
 
@@ -46,14 +49,16 @@ And we cannot really continue running most applications without secret, so it is
 ### Usage with environment specific secrets
 
 ```rust
+use secret_manager_macro::build_secrets_struct;
+
 #[tokio::main]
 async fn main() {
     std::env::set_var("ENV", "dev");
 
     #[build_secrets_struct(envs = dev,prod)]
-    struct ExampleSecret {}
+    struct SecretManagerTestSecret {}
 
-    let secrets = ExampleSecret::new().await;
+    let secrets = SecretManagerTestSecret::new().await;
 
     // secrets are properties of the struct, so you can now access them
     assert_eq!(secrets.firstKey.as_ref(), "firstValue");

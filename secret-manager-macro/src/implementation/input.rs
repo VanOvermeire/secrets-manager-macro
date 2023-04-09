@@ -19,8 +19,6 @@ struct Attributes {
 
 impl Parse for Attributes {
     fn parse(input: ParseStream) -> syn::Result<Self> {
-        eprintln!("{:?}", input);
-
         let mut optional_name = None;
         let mut envs: Punctuated<Ident, Comma> = Punctuated::new();
 
