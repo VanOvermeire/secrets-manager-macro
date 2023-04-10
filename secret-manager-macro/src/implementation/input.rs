@@ -5,7 +5,7 @@ use syn::punctuated::Punctuated;
 use syn::token::{Comma};
 
 struct Attributes {
-    optional_name: Option<Ident>,
+    _optional_name: Option<Ident>,
     envs: Punctuated<Ident, Comma>,
 }
 
@@ -26,7 +26,7 @@ impl Parse for Attributes {
         }
 
         Ok(Attributes {
-            optional_name,
+            _optional_name: optional_name,
             envs,
         })
     }

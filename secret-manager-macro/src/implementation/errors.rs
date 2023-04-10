@@ -17,9 +17,10 @@ pub enum RetrievalError {
 impl RetrievalError {
     pub fn into_compile_error(self, correct_span: Span) -> TokenStream {
         match self {
-            RetrievalError::Aws(e) | RetrievalError::NotFound(e) | RetrievalError::DuplicateSecrets(e) => syn::Error::new(correct_span, e).into_compile_error(),
+            RetrievalError::NotFound(e) | RetrievalError::DuplicateSecrets(e) => syn::Error::new(correct_span, e).into_compile_error(),
             RetrievalError::Json => syn::Error::new(correct_span, "Could not parse the secret value as JSON").into_compile_error(),
             RetrievalError::MissingEnv(e) => syn::Error::new(correct_span, e).into_compile_error(),
+            RetrievalError::Aws(e) => syn::Error::new(correct_span, e).into_compile_error(),
         }
     }
 }
@@ -38,13 +39,16 @@ impl From<serde_json::Error> for RetrievalError {
 
 impl From<SdkError<ListSecretsError>> for RetrievalError {
     fn from(value: SdkError<ListSecretsError>) -> Self {
-        RetrievalError::Aws(value.to_string())
+        match value {
+            SdkError::ServiceError(_) => RetrievalError::Aws(format!("Could not list secrets: {}. Do you have valid AWS credentials?", value)),
+            _ => RetrievalError::Aws(format!("Could not list secrets: {}", value)),
+        }
     }
 }
 
 impl From<SdkError<GetSecretValueError>> for RetrievalError {
     fn from(value: SdkError<GetSecretValueError>) -> Self {
-        RetrievalError::Aws(value.to_string())
+        RetrievalError::Aws(format!("Could not get secret from AWS: {}", value))
     }
 }
 

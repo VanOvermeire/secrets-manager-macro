@@ -4,3 +4,7 @@ members = [
     "secret-manager-macro",
     "secret-manager-usage"
 ]
+
+exclude = [
+    "e2e/code"
+]
