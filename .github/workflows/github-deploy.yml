@@ -29,6 +29,26 @@ jobs:
       - name: Run all tests
         run: cargo test
 
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Build e2e release
+        run: ENV=dev cargo build --release --target x86_64-unknown-linux-musl -p ${{ matrix.build-bin-name }}
+        working-directory: ./e2e/code
+      - name: Zip e2e release
+        run: mv ./target/x86_64-unknown-linux-musl/release/e2e-test-code ./bootstrap && zip -j e2e-test-code.zip ./bootstrap
+        working-directory: ./e2e/code
+      - name: Deploy to AWS
+        uses: youyo/aws-cdk-github-actions@v2
+        with:
+          working_dir: e2e/infra
+          cdk_subcommand: deploy
+          cdk_args: --require-approval never
+          actions_comment: false
+      # TODO check the output
+
 #  publish:
 #    needs:
 #      - test
