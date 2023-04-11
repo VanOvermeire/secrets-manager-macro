@@ -34,6 +34,12 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
+      - name: Setup tools
+        run: |
+          set -ex
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+          rustup target add x86_64-unknown-linux-musl
       - name: Build e2e release
         run: ENV=dev cargo build --release --target x86_64-unknown-linux-musl
         working-directory: ./e2e/code
