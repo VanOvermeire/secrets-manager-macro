@@ -35,7 +35,7 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v3
       - name: Build e2e release
-        run: ENV=dev cargo build --release --target x86_64-unknown-linux-musl -p ${{ matrix.build-bin-name }}
+        run: ENV=dev cargo build --release --target x86_64-unknown-linux-musl
         working-directory: ./e2e/code
       - name: Zip e2e release
         run: mv ./target/x86_64-unknown-linux-musl/release/e2e-test-code ./bootstrap && zip -j e2e-test-code.zip ./bootstrap
