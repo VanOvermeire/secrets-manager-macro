@@ -10,7 +10,6 @@ env:
   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   AWS_DEFAULT_REGION: eu-west-1
-#  AWS_REGION: eu-west-1
 
 jobs:
   clippy:
@@ -53,7 +52,9 @@ jobs:
           cdk_subcommand: deploy
           cdk_args: --require-approval never
           actions_comment: false
-      # TODO check the output
+      - name: Check output
+        run: ./verify_output.sh
+        working-directory: ./e2e/scripts
 
 #  publish:
 #    needs:

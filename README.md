@@ -27,7 +27,6 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 ## TODOs
 
 - GitHub actions publish
-- GitHub end-to-end test with deploy lambda and check output
 
 - Attribute for changing secret name
 - Only allow the passed in `envs` when calling `new`?
