@@ -18,7 +18,7 @@ pub struct ValidatedSecrets {
 impl ValidatedSecrets {
     pub fn new(found_secret_names: NonEmptySecrets, env_setting: EnvSetting) -> Result<Self, RetrievalError> {
         match &env_setting {
-            EnvSetting::None if found_secret_names.0.len() != 1 => Err(RetrievalError::DuplicateSecrets(format!("Expected to find an exact match, instead found multiple possible secrets: {}. Please specify an exact name", found_secret_names.0.join(",")))),
+            EnvSetting::None if found_secret_names.0.len() != 1 => Err(RetrievalError::DuplicateSecrets(format!("expected to find an exact match, instead found multiple possible secrets: {}. Please specify an exact name", found_secret_names.0.join(",")))),
             EnvSetting::None => Ok(ValidatedSecrets {
                 secrets: found_secret_names.0,
                 env_setting,
@@ -31,8 +31,8 @@ impl ValidatedSecrets {
                         secrets: matched,
                         env_setting,
                     }),
-                    Ordering::Less => Err(RetrievalError::MissingEnv(format!("Received envs {} but only matched these secrets: {}", envs.join(","), matched.join(",")))),
-                    Ordering::Greater => Err(RetrievalError::DuplicateSecrets(format!("Expected to find {} secrets, but found more: {}. Please specify an exact name", envs.len(), found_secret_names.0.join(",")))),
+                    Ordering::Less => Err(RetrievalError::MissingEnv(format!("received envs {} but only matched these secrets: {}", envs.join(","), matched.join(",")))),
+                    Ordering::Greater => Err(RetrievalError::DuplicateSecrets(format!("expected to find {} secrets, but found more: {}. Please specify an exact name", envs.len(), found_secret_names.0.join(",")))),
                 }
             }
         }
