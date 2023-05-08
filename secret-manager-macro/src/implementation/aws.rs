@@ -83,13 +83,13 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
     }
 }
 
-fn is_match_with_one_secret_prefixed_with_env(base_secret_names: &Vec<String>, v: &String, envs: &Vec<String>) -> bool {
+fn is_match_with_one_secret_prefixed_with_env(base_secret_names: &[String], v: &str, envs: &[String]) -> bool {
     base_secret_names.iter()
         .flat_map(|b| envs.iter().map(|e| format!("/{e}/{b}")).collect::<Vec<String>>())
         .any(|combined| v.contains(&combined))
 }
 
-fn is_exact_match_with_base_secret(base_secret_names: &Vec<String>, v: &String) -> bool {
+fn is_exact_match_with_base_secret(base_secret_names: &[String], v: &String) -> bool {
     base_secret_names.contains(v)
 }
 
