@@ -5,20 +5,24 @@ use aws_sdk_secretsmanager::Client;
 use aws_sdk_secretsmanager::error::{GetSecretValueError, ListSecretsError};
 use aws_sdk_secretsmanager::types::SdkError;
 use crate::implementation::errors::RetrievalError;
-use crate::implementation::transformations::ValidatedSecrets;
 use crate::implementation::input::EnvSetting;
 use tokio_stream::StreamExt;
 
-struct SecretManagerClient {
+pub struct SecretManagerClient {
     client: Client
 }
 
 impl SecretManagerClient {
-    async fn new() -> Self {
+    pub async fn new() -> Self {
         let shared_config = aws_config::from_env().load().await;
         SecretManagerClient {
             client: Client::new(&shared_config),
         }
+    }
+
+    pub async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>, env_setting: &EnvSetting) -> Result<NonEmptySecrets, RetrievalError> {
+        let list_result = self.list_secrets().await?;
+        filter_secrets_list(list_result, base_secret_names, env_setting)
     }
 
     async fn list_secrets(&self) -> Result<Vec<ListSecretsOutput>, SdkError<ListSecretsError>> {
@@ -31,9 +35,9 @@ impl SecretManagerClient {
             .await
     }
 
-    async fn get_filtered_secret_list(&self, base_secret_names: Vec<String>, env_setting: &EnvSetting) -> Result<NonEmptySecrets, RetrievalError> {
-        let list_result = self.list_secrets().await?;
-        filter_secrets_list(list_result, base_secret_names, env_setting)
+    pub async fn get_secret_as_map(&self, full_secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
+        let secret_value = self.get_secret(full_secret_name).await?;
+        get_secret_value_as_map(secret_value)
     }
 
     async fn get_secret(&self, secret_name: &str) -> Result<GetSecretValueOutput, SdkError<GetSecretValueError>> {
@@ -42,11 +46,6 @@ impl SecretManagerClient {
             .secret_id(secret_name)
             .send()
             .await
-    }
-
-    async fn get_secret_as_map(&self, full_secret_name: &str) -> Result<HashMap<String, String>, RetrievalError> {
-        let secret_value = self.get_secret(full_secret_name).await?;
-        get_secret_value_as_map(secret_value)
     }
 }
 
@@ -92,18 +91,6 @@ fn is_match_with_one_secret_prefixed_with_env(base_secret_names: &Vec<String>, v
 
 fn is_exact_match_with_base_secret(base_secret_names: &Vec<String>, v: &String) -> bool {
     base_secret_names.contains(v)
-}
-
-// TODO maybe doing too much. should it calls the validated secret stuff?
-pub async fn secret_manager(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
-    let client = SecretManagerClient::new().await;
-    let found_secret_names = client.get_filtered_secret_list(base_secret_names, &env_setting).await?;
-
-    let validated_secrets = ValidatedSecrets::new(found_secret_names, env_setting)?;
-    let (full_secret_name, actual_base_name) = validated_secrets.get_full_and_base_secret();
-
-    let secret_value = client.get_secret_as_map(&full_secret_name).await?;
-    Ok((actual_base_name, secret_value))
 }
 
 #[cfg(test)]
