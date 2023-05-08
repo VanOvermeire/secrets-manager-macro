@@ -9,6 +9,7 @@ use crate::implementation::input::{self, EnvSetting};
 use crate::implementation::output;
 use crate::implementation::transformations;
 
+// TODO make this one async, use it to combine stuff, and create the runtime in below method
 fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let rt = tokio::runtime::Runtime::new().unwrap();
     rt.block_on(aws::secret_manager(base_secret_names, env_setting))

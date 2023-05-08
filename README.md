@@ -37,7 +37,6 @@ At the time of writing, a secret will cost you 40 dollar cents per month, plus 5
 
 ## Improvements, extensions
 
-- 'service error' as message when no aws credentials
 - One or two clones to get rid of
 - Lazy static as an option?
 - Parameter store as an alternative for loading? Maybe as an additional macro

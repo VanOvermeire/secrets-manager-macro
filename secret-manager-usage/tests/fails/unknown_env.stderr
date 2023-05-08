@@ -1,4 +1,4 @@
-error: Received envs dev,fake but only matched these secrets: /dev/secret-manager-test-secret
+error: received envs dev,fake but only matched these secrets: /dev/secret-manager-test-secret
  --> tests/fails/unknown_env.rs:4:8
   |
 4 | struct SecretManagerTestSecret {}

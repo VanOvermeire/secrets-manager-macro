@@ -67,16 +67,8 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
         .map(|v| v.to_string())
         .filter(|v| {
             match env_setting {
-                EnvSetting::None => {
-                    // we expect an exact match with any of our base secrets
-                    base_secret_names.contains(v)
-                }
-                EnvSetting::Env(envs) => {
-                    // we expect a match with any of the names *prefixed* by any of the envs
-                    base_secret_names.iter()
-                        .flat_map(|b| envs.iter().map(|e| format!("/{e}/{b}")).collect::<Vec<String>>())
-                        .any(|combined| v.contains(&combined))
-                }
+                EnvSetting::None => is_exact_match_with_base_secret(&base_secret_names, v),
+                EnvSetting::Env(envs) => is_match_with_one_secret_prefixed_with_env(&base_secret_names, v, envs),
             }
         }).collect();
 
@@ -92,7 +84,17 @@ fn filter_secrets_list(output: Vec<ListSecretsOutput>, base_secret_names: Vec<St
     }
 }
 
-// TODO maybe doing too much. should it call the validated secret stuff?
+fn is_match_with_one_secret_prefixed_with_env(base_secret_names: &Vec<String>, v: &String, envs: &Vec<String>) -> bool {
+    base_secret_names.iter()
+        .flat_map(|b| envs.iter().map(|e| format!("/{e}/{b}")).collect::<Vec<String>>())
+        .any(|combined| v.contains(&combined))
+}
+
+fn is_exact_match_with_base_secret(base_secret_names: &Vec<String>, v: &String) -> bool {
+    base_secret_names.contains(v)
+}
+
+// TODO maybe doing too much. should it calls the validated secret stuff?
 pub async fn secret_manager(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
     let client = SecretManagerClient::new().await;
     let found_secret_names = client.get_filtered_secret_list(base_secret_names, &env_setting).await?;

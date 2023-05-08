@@ -1,3 +1,4 @@
+use assert_impl::assert_impl;
 use secret_manager_macro::build_secrets_struct;
 
 #[tokio::test]
@@ -14,7 +15,7 @@ async fn should_retrieve_secrets_with_specified_envs() {
 }
 
 #[tokio::test]
-async fn should_retrieve_secrets_no_env() {
+async fn should_retrieve_secrets_no_env_keeping_other_annotations() {
     #[derive(Debug)]
     #[build_secrets_struct]
     struct NoPrefixSecret {}
@@ -22,4 +23,5 @@ async fn should_retrieve_secrets_no_env() {
     let secrets = NoPrefixSecret::new().await;
 
     assert_eq!(secrets.thirdKey.as_ref(), "thirdValue");
+    assert_impl!(core::fmt::Debug: NoPrefixSecret);
 }

@@ -1,4 +1,4 @@
-error: Could not parse the secret value as JSON
+error: could not parse the secret value as JSON
  --> tests/fails/invalid_json.rs:4:8
   |
 4 | struct InvalidSecret {}
