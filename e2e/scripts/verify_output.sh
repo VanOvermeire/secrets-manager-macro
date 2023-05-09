@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-lambda=$(aws cloudformation describe-stack-resources --stack-name SecretManagerE2ETest --query 'StackResources[?contains(ResourceType, `AWS::Lambda::Function`) == `true`].PhysicalResourceId' --output text)
+lambda=$(aws cloudformation describe-stack-resources --stack-name SecretsManagerE2ETest --query 'StackResources[?contains(ResourceType, `AWS::Lambda::Function`) == `true`].PhysicalResourceId' --output text)
 
 echo "Invoking $lambda"
 aws lambda invoke --function-name "$lambda" --payload "{}" outfile 2>&1 > /dev/null

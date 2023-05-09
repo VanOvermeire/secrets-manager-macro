@@ -56,9 +56,9 @@ async fn main() {
     std::env::set_var("ENV", "dev");
 
     #[build_secrets_struct(envs = dev,prod)]
-    struct SecretManagerTestSecret {}
+    struct SecretsManagerTestSecret {}
 
-    let secrets = SecretManagerTestSecret::new().await;
+    let secrets = SecretsManagerTestSecret::new().await;
 
     // secrets are properties of the struct, so you can now access them
     assert_eq!(secrets.firstKey.as_ref(), "firstValue");

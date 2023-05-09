@@ -8,14 +8,14 @@ use crate::implementation::errors::RetrievalError;
 use crate::implementation::input::EnvSetting;
 use tokio_stream::StreamExt;
 
-pub struct SecretManagerClient {
+pub struct SecretsManagerClient {
     client: Client
 }
 
-impl SecretManagerClient {
+impl SecretsManagerClient {
     pub async fn new() -> Self {
         let shared_config = aws_config::from_env().load().await;
-        SecretManagerClient {
+        SecretsManagerClient {
             client: Client::new(&shared_config),
         }
     }

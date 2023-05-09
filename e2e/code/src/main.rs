@@ -4,7 +4,7 @@ use serde_json::json;
 use secrets_manager_macro::build_secrets_struct;
 
 #[build_secrets_struct(envs = dev,prod)]
-struct SecretManagerTestSecret {}
+struct SecretsManagerTestSecret {}
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -17,7 +17,7 @@ async fn flow() -> Result<Value, Error> {
     let env = std::env::var("ENV").unwrap_or_else(|_| "unknown".to_string());
     println!("Invoked test lambda for environment {}", env);
 
-    let secrets = SecretManagerTestSecret::new().await;
+    let secrets = SecretsManagerTestSecret::new().await;
 
     Ok(json!({
         "firstValue": secrets.firstKey.as_ref(),

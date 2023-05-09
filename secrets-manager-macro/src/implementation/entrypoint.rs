@@ -3,7 +3,7 @@ use proc_macro2::{Ident, TokenStream};
 use syn::{Error, ItemStruct, parse2};
 use syn::spanned::Spanned;
 
-use crate::implementation::aws::SecretManagerClient;
+use crate::implementation::aws::SecretsManagerClient;
 use crate::implementation::errors::RetrievalError;
 use crate::implementation::input::{self, EnvSetting};
 use crate::implementation::output;
@@ -11,7 +11,7 @@ use crate::implementation::transformations;
 use crate::implementation::transformations::ValidatedSecrets;
 
 async fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, env_setting: EnvSetting) -> Result<(String, HashMap<String, String>), RetrievalError> {
-    let client = SecretManagerClient::new().await;
+    let client = SecretsManagerClient::new().await;
     let found_secret_names = client.get_filtered_secret_list(base_secret_names, &env_setting).await?;
 
     let validated_secrets = ValidatedSecrets::new(found_secret_names, env_setting)?;
@@ -21,7 +21,7 @@ async fn retrieve_real_name_and_keys(base_secret_names: Vec<String>, env_setting
     Ok((actual_base_name, secret_value))
 }
 
-pub fn create_secret_manager(attributes: TokenStream, item: TokenStream) -> TokenStream {
+pub fn create_secrets_manager(attributes: TokenStream, item: TokenStream) -> TokenStream {
     let input: ItemStruct = match parse2(item.clone()) {
         Ok(it) => it,
         Err(_) => return Error::new(

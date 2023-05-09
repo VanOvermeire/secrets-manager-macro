@@ -19,8 +19,8 @@ See [this readme](./secrets-manager-macro/README.md).
 ## Running the tests
 
 The integration tests require that you have valid AWS credentials and an AWS Secrets Manager secret called 'GithubActionsTestSecret' in your AWS account.
-You can use `secret_manager_tests_setup.sh` in `scripts` to create this secret with the correct secret value. 
-`secret_manager_delete_tests_setup.sh` will clean up these test secrets, if you want to save costs.
+You can use `secrets_manager_tests_setup.sh` in `scripts` to create this secret with the correct secret value. 
+`secrets_manager_delete_tests_setup.sh` will clean up these test secrets, if you want to save costs.
 
 At the time of writing, a secret will cost you 40 dollar cents per month, plus 5 cents for 10 000 API calls (which will probably round down to 0 cents).
 
