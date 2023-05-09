@@ -1,7 +1,7 @@
 use lambda_runtime::{Error, LambdaEvent, service_fn};
 use serde_json::Value;
 use serde_json::json;
-use secret_manager_macro::build_secrets_struct;
+use secrets_manager_macro::build_secrets_struct;
 
 #[build_secrets_struct(envs = dev,prod)]
 struct SecretManagerTestSecret {}

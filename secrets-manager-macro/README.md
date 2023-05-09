@@ -17,7 +17,7 @@ And if you are running inside an AWS Lambda, you should already have most of the
 ### Simple usage (no environment specific secrets)
 
 ```rust
-use secret_manager_macro::build_secrets_struct;
+use secrets_manager_macro::build_secrets_struct;
 
 #[tokio::main]
 async fn main() {
@@ -49,7 +49,7 @@ And we cannot really continue running most applications without secret, so it is
 ### Usage with environment specific secrets
 
 ```rust
-use secret_manager_macro::build_secrets_struct;
+use secrets_manager_macro::build_secrets_struct;
 
 #[tokio::main]
 async fn main() {

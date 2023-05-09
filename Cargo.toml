@@ -1,8 +1,8 @@
 [workspace]
 
 members = [
-    "secret-manager-macro",
-    "secret-manager-usage"
+    "secrets-manager-macro",
+    "secrets-manager-usage"
 ]
 
 exclude = [

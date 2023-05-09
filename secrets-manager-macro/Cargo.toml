@@ -1,7 +1,14 @@
 [package]
-name = "secret-manager-macro"
+name = "secrets-manager-macro"
 version = "0.1.0"
 edition = "2021"
+
+description = "Macro for using AWS Secrets Manager secrets in your application"
+license = "MIT"
+homepage = "https://github.com/VanOvermeire/secrets-manager-macro"
+repository = "https://github.com/VanOvermeire/secrets-manager-macro"
+readme = "README.md"
+keywords = ["AWS", "secrets-manager", "macro"]
 
 [dependencies]
 quote = "1.0.20"

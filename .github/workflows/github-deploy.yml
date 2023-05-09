@@ -1,4 +1,4 @@
-name: Secret Manager Macro
+name: Secrets Manager Macro
 on:
   workflow_dispatch:
   push:
@@ -70,4 +70,4 @@ jobs:
 #          args: ${{ secrets.CRATES_TOKEN }}
 #      - name: Publish to Cargo
 #        run: cargo publish
-#        working-directory: secret-manager-macro # only interested in the subdir (with our macro)
+#        working-directory: secrets-manager-macro # only interested in the subdir (with our macro)

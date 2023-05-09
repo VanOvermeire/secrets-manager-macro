@@ -106,7 +106,7 @@ pub fn create_output(item: &ItemStruct, keys: &[Ident], actual_base_secret_name:
     let secret_string_name = get_secret_string_name(name);
     let secret_string_struct = create_secret_string_struct(&secret_string_name);
     let secret_fields = keys.iter().map(|k| quote!(pub #k: #secret_string_name));
-    let new = create_init_for_secrets(keys, name, actual_base_secret_name, env_setting);
+    let new_impl_block = create_init_for_secrets(keys, name, actual_base_secret_name, env_setting);
 
     quote!(
         #secret_string_struct
@@ -116,7 +116,7 @@ pub fn create_output(item: &ItemStruct, keys: &[Ident], actual_base_secret_name:
             #(#secret_fields,)*
         }
 
-        #new
+        #new_impl_block
     )
 }
 

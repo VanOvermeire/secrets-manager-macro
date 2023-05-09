@@ -1,5 +1,5 @@
 use assert_impl::assert_impl;
-use secret_manager_macro::build_secrets_struct;
+use secrets_manager_macro::build_secrets_struct;
 
 #[tokio::test]
 async fn should_retrieve_secrets_with_specified_envs() {

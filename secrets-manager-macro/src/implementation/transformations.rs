@@ -67,11 +67,11 @@ impl ValidatedSecrets {
 }
 
 pub fn possible_base_names(secret_struct_name: &str) -> Vec<String> {
-    let with_hyphen = alternative_without_first_letter(secret_struct_name, |mut acc| {
+    let with_hyphen = lowercase_and_add(secret_struct_name, |mut acc| {
         acc.push(HYPHEN);
         acc
     });
-    let with_underscore = alternative_without_first_letter(secret_struct_name, |mut acc| {
+    let with_underscore = lowercase_and_add(secret_struct_name, |mut acc| {
         acc.push(UNDERSCORE);
         acc
     });
@@ -85,7 +85,7 @@ pub fn possible_base_names(secret_struct_name: &str) -> Vec<String> {
         })
 }
 
-fn alternative_without_first_letter<F>(secret_struct_name: &str, mut addition: F) -> String where F: FnMut(String) -> String {
+fn lowercase_and_add<F>(secret_struct_name: &str, mut addition: F) -> String where F: FnMut(String) -> String {
     secret_struct_name.chars().fold("".to_string(), |mut acc, curr| {
         if acc.is_empty() {
             acc.push_str(&curr.to_lowercase().to_string());
@@ -227,6 +227,23 @@ mod tests {
         assert_eq!(actual.len(), 2);
         assert_eq!(actual[0], "Secret");
         assert_eq!(actual[1], "secret");
+    }
+
+    #[test]
+    fn lowercase_and_add_should_just_lowercase_name_when_addition_adds_nothing() {
+        let actual = lowercase_and_add("SecretName", |val| val);
+
+        assert_eq!(actual, "secretname".to_string());
+    }
+
+    #[test]
+    fn lowercase_and_add_should_lowercase_and_add_given_value_before_capital_letter_except_first() {
+        let actual = lowercase_and_add("SecretSecretName", |mut val| {
+            val.push('*');
+            val
+        });
+
+        assert_eq!(actual, "secret*secret*name".to_string());
     }
 
     #[test]

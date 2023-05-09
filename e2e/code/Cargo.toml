@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-secret-manager-macro = { path = "../../secret-manager-macro" }
+secret-manager-macro = { path = "../../secrets-manager-macro" }
 aws-config = "0.54.1"
 aws-sdk-secretsmanager = "0.24.0"
 serde_json = "1.0.93"
