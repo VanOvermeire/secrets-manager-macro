@@ -4,7 +4,7 @@ A macro for using AWS Secrets Manager secrets in your application.
 
 ## Status
 
-![Github Actions Status](https://github.com/VanOvermeire/secret-manager-macro/actions/workflows/github-deploy.yml/badge.svg)
+![Github Actions Status](https://github.com/VanOvermeire/secrets-manager-macro/actions/workflows/github-deploy.yml/badge.svg)
 
 ## Features
 
